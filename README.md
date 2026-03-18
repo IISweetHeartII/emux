@@ -34,6 +34,33 @@ Terminal multiplexers haven't changed much in decades. tmux requires cryptic con
 
 ## Installation
 
+### Quick install (recommended)
+
+**macOS / Linux / WSL:**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/IISweetHeartII/emux/main/install.sh | sh
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/IISweetHeartII/emux/main/install.ps1 | iex
+```
+
+### Cargo install
+
+```sh
+cargo install emux
+```
+
+### Homebrew (macOS / Linux)
+
+```sh
+brew tap IISweetHeartII/tap
+brew install emux
+```
+
 ### Prebuilt binaries
 
 Download from [GitHub Releases](https://github.com/IISweetHeartII/emux/releases/latest). Binaries are available for:
@@ -45,26 +72,8 @@ Download from [GitHub Releases](https://github.com/IISweetHeartII/emux/releases/
 | Linux (glibc)   | aarch64     |
 | macOS           | x86_64      |
 | macOS           | aarch64     |
-
-```sh
-# Example: download and install on macOS (Apple Silicon)
-curl -LO https://github.com/IISweetHeartII/emux/releases/latest/download/emux-v0.1.0-aarch64-apple-darwin.tar.gz
-tar xzf emux-*.tar.gz
-sudo mv emux /usr/local/bin/
-```
-
-### Cargo install
-
-```sh
-cargo install emux
-```
-
-### Homebrew
-
-```sh
-brew tap IISweetHeartII/tap
-brew install emux
-```
+| Windows         | x86_64      |
+| Windows         | aarch64     |
 
 ### From source
 

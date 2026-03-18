@@ -30,6 +30,12 @@ jobs:
           - target: aarch64-apple-darwin
             os: macos-latest
             archive: tar.gz
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
 
     steps:
       - uses: actions/checkout@v4
@@ -61,15 +67,28 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Package
+      - name: Package (Unix)
+        if: matrix.archive == 'tar.gz'
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME}"
-          BINARY="emux"
-          ARCHIVE="emux-${VERSION}-${{ matrix.target }}.${{ matrix.archive }}"
+          ARCHIVE="emux-${VERSION}-${{ matrix.target }}.tar.gz"
 
           cd target/${{ matrix.target }}/release
-          tar czf "../../../${ARCHIVE}" "${BINARY}"
+          tar czf "../../../${ARCHIVE}" emux
+          cd ../../..
+
+          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+
+      - name: Package (Windows)
+        if: matrix.archive == 'zip'
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          ARCHIVE="emux-${VERSION}-${{ matrix.target }}.zip"
+
+          cd target/${{ matrix.target }}/release
+          7z a "../../../${ARCHIVE}" emux.exe
           cd ../../..
 
           echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
