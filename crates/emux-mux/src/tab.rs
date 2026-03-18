@@ -36,20 +36,30 @@ const MIN_FLOATING_ROWS: usize = 2;
 /// A floating pane that hovers above the tiled layout.
 #[derive(Debug)]
 pub struct FloatingPane {
+    /// The underlying pane instance.
     pub pane: Pane,
+    /// Horizontal position (column offset) within the tab viewport.
     pub x: usize,
+    /// Vertical position (row offset) within the tab viewport.
     pub y: usize,
+    /// Width in columns.
     pub width: usize,
+    /// Height in rows.
     pub height: usize,
+    /// Whether this floating pane is currently visible.
     pub visible: bool,
 }
 
 /// A swap layout definition: a named layout template activated by pane count.
 #[derive(Debug, Clone)]
 pub struct SwapLayout {
+    /// Human-readable name of this swap layout.
     pub name: String,
+    /// Minimum pane count for this layout to be applicable.
     pub min_panes: Option<usize>,
+    /// Maximum pane count for this layout to be applicable.
     pub max_panes: Option<usize>,
+    /// The layout tree template to apply.
     pub layout: LayoutNode,
 }
 

@@ -21,10 +21,15 @@ pub enum ClientMessage {
 /// Metadata about an active session returned by `ListSessions`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SessionEntry {
+    /// Session name.
     pub name: String,
+    /// Number of tabs in the session.
     pub tabs: usize,
+    /// Number of panes in the active tab.
     pub panes: usize,
+    /// Terminal width in columns.
     pub cols: usize,
+    /// Terminal height in rows.
     pub rows: usize,
 }
 

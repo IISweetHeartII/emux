@@ -117,7 +117,9 @@ pub struct LineFlags {
 /// A single row of cells with metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Row {
+    /// The cells in this row.
     pub cells: Vec<Cell>,
+    /// Line metadata flags (e.g. continuation/soft-wrap).
     pub flags: LineFlags,
 }
 

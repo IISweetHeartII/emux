@@ -60,8 +60,11 @@ fn default_palette() -> Vec<(u8, u8, u8)> {
 /// A damaged (changed) region of the screen.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DamageRegion {
+    /// Row index of the damaged region.
     pub row: usize,
+    /// Starting column (inclusive) of the damaged region.
     pub col_start: usize,
+    /// Ending column (exclusive) of the damaged region.
     pub col_end: usize,
 }
 
@@ -125,9 +128,12 @@ pub enum ClearTabStop {
 /// call mutation methods directly.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Screen {
+    /// The active terminal grid (primary or alternate).
     pub grid: Grid,
+    /// Current cursor state.
     pub cursor: Cursor,
     pub(crate) saved_cursor: Option<SavedCursor>,
+    /// Active terminal mode flags.
     pub modes: Modes,
     pub(crate) scroll_top: usize,
     pub(crate) scroll_bottom: usize,
@@ -143,7 +149,7 @@ pub struct Screen {
     pub(crate) bg: Color,
     /// Tab stops: `tab_stops`[col] is true if there is a tab stop at column `col`.
     pub(crate) tab_stops: Vec<bool>,
-    /// Window title.
+    /// Window title set by OSC 0/2.
     pub title: String,
     /// G0 character set.
     pub(crate) charset_g0: Charset,
@@ -169,7 +175,7 @@ pub struct Screen {
     /// Write-back buffer for terminal responses (DA, DSR, OSC queries).
     pub(crate) response_buf: Vec<u8>,
 
-    /// Current working directory reported by OSC 7.
+    /// Current working directory reported by OSC 7 (URI string).
     pub working_directory: Option<String>,
 
     /// Viewport scroll offset: 0 = at bottom, >0 = scrolled up.

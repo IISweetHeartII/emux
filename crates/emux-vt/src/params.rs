@@ -19,6 +19,7 @@ pub struct Params {
 }
 
 impl Params {
+    /// Create a new empty parameter accumulator.
     pub fn new() -> Self {
         Self {
             values: Vec::with_capacity(8),
@@ -30,6 +31,7 @@ impl Params {
         }
     }
 
+    /// Reset all accumulated parameters.
     pub fn clear(&mut self) {
         self.values.clear();
         self.current = 0;
@@ -39,6 +41,7 @@ impl Params {
         self.pending_colon = false;
     }
 
+    /// Feed a single byte (digit or separator) into the accumulator.
     pub fn push(&mut self, byte: u8) {
         match byte {
             b'0'..=b'9' => {
@@ -122,6 +125,7 @@ impl Params {
         result
     }
 
+    /// Returns true if no parameters have been accumulated.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

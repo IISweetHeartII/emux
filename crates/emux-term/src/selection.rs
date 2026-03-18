@@ -18,6 +18,7 @@ pub struct SelectionPoint {
 }
 
 impl SelectionPoint {
+    /// Create a new selection point at the given absolute row and column.
     pub fn new(row: usize, col: usize) -> Self {
         Self { row, col }
     }

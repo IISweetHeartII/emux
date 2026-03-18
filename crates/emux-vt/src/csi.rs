@@ -5,6 +5,7 @@
 pub struct CsiParam(pub u16);
 
 impl CsiParam {
+    /// Return the raw parameter value.
     pub fn value(self) -> u16 {
         self.0
     }

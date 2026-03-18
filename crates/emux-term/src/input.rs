@@ -35,8 +35,11 @@ pub enum Key {
 /// Modifier key state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Modifiers {
+    /// Shift key is pressed.
     pub shift: bool,
+    /// Alt (Meta) key is pressed.
     pub alt: bool,
+    /// Ctrl key is pressed.
     pub ctrl: bool,
 }
 

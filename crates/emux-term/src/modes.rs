@@ -20,30 +20,37 @@ pub enum MouseMode {
 /// Kitty keyboard protocol flags (progressive enhancement).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct KittyKeyboardFlags {
+    /// Raw bitfield of enabled Kitty keyboard protocol flags.
     pub bits: u8,
 }
 
 impl KittyKeyboardFlags {
+    /// Create a new instance with no flags set.
     pub fn new() -> Self {
         Self { bits: 0 }
     }
 
+    /// Whether the disambiguate-escape flag (bit 0) is set.
     pub fn disambiguate_escape(&self) -> bool {
         self.bits & 1 != 0
     }
 
+    /// Whether the report-event-types flag (bit 1) is set.
     pub fn report_event_types(&self) -> bool {
         self.bits & 2 != 0
     }
 
+    /// Whether the report-alternate-keys flag (bit 2) is set.
     pub fn report_alternate_keys(&self) -> bool {
         self.bits & 4 != 0
     }
 
+    /// Whether the report-all-keys-as-escape-codes flag (bit 3) is set.
     pub fn report_all_keys_as_escape_codes(&self) -> bool {
         self.bits & 8 != 0
     }
 
+    /// Whether the report-associated-text flag (bit 4) is set.
     pub fn report_associated_text(&self) -> bool {
         self.bits & 16 != 0
     }

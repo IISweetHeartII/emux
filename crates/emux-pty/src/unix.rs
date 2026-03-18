@@ -14,9 +14,13 @@ use crate::cmdbuilder::CommandBuilder;
 /// PTY dimensions.
 #[derive(Debug, Clone, Copy)]
 pub struct PtySize {
+    /// Number of rows (lines) in the terminal.
     pub rows: u16,
+    /// Number of columns (characters per line) in the terminal.
     pub cols: u16,
+    /// Width of the terminal in pixels (0 if unknown).
     pub pixel_width: u16,
+    /// Height of the terminal in pixels (0 if unknown).
     pub pixel_height: u16,
 }
 

@@ -5,14 +5,18 @@ pub type PaneId = u32;
 /// Size of a pane in rows and columns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PaneSize {
+    /// Number of rows (height in characters).
     pub rows: usize,
+    /// Number of columns (width in characters).
     pub cols: usize,
 }
 
 /// Constraints that prevent a pane from being split or resized along an axis.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PaneConstraints {
+    /// If set, the pane cannot be resized vertically.
     pub fixed_rows: Option<usize>,
+    /// If set, the pane cannot be resized horizontally.
     pub fixed_cols: Option<usize>,
 }
 
@@ -50,14 +54,17 @@ impl Pane {
         }
     }
 
+    /// Returns the pane's unique identifier.
     pub fn id(&self) -> PaneId {
         self.id
     }
 
+    /// Returns the pane's current title.
     pub fn title(&self) -> &str {
         &self.title
     }
 
+    /// Set the pane title, saving the previous title for undo.
     pub fn set_title(&mut self, title: impl Into<String>) {
         self.previous_title = Some(self.title.clone());
         self.title = title.into();
@@ -73,10 +80,12 @@ impl Pane {
         }
     }
 
+    /// Mark or unmark the pane as cleared.
     pub fn set_cleared(&mut self, cleared: bool) {
         self.cleared = cleared;
     }
 
+    /// Returns whether the pane has been cleared.
     pub fn is_cleared(&self) -> bool {
         self.cleared
     }
@@ -108,10 +117,12 @@ impl Pane {
         self.scroll_offset
     }
 
+    /// Returns the current pane dimensions.
     pub fn size(&self) -> PaneSize {
         self.size
     }
 
+    /// Resize the pane to the given dimensions.
     pub fn resize(&mut self, cols: usize, rows: usize) {
         self.size = PaneSize::new(cols, rows);
     }

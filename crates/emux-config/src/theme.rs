@@ -4,10 +4,15 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Theme {
+    /// Background color (hex string).
     pub background: String,
+    /// Default foreground/text color (hex string).
     pub foreground: String,
+    /// Cursor color (hex string).
     pub cursor: String,
+    /// Selection highlight background color (hex string).
     pub selection_bg: String,
+    /// ANSI color palette (indices 0-7 normal, 8-15 bright).
     pub colors: [String; 16],
 }
 

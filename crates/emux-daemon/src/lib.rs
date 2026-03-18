@@ -8,7 +8,8 @@ use std::fmt;
 
 /// Unique identifier for a connected client.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ClientId(pub u64);
+pub struct ClientId(/// Numeric identifier for this client connection.
+pub u64);
 
 /// Errors produced by the daemon.
 #[derive(Debug)]

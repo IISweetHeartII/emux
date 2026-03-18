@@ -8,8 +8,11 @@ use serde::{Deserialize, Serialize};
 /// Serializable snapshot of a pane, including scrollback.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PaneSnapshot {
+    /// Pane identifier.
     pub id: u32,
+    /// Pane title (e.g. from OSC 0/2).
     pub title: String,
+    /// Lines of text stored in the scrollback buffer.
     pub scrollback: Vec<String>,
     /// Working directory reported by OSC 7 (if available).
     #[serde(default)]
@@ -22,7 +25,9 @@ pub struct PaneSnapshot {
 /// Serializable snapshot of a tab.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TabSnapshot {
+    /// Tab display name.
     pub name: String,
+    /// Snapshots of all panes within this tab.
     pub panes: Vec<PaneSnapshot>,
     /// Which pane was focused in this tab.
     #[serde(default)]
@@ -32,10 +37,15 @@ pub struct TabSnapshot {
 /// Serializable snapshot of a session.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionSnapshot {
+    /// Session name.
     pub name: String,
+    /// Terminal width in columns.
     pub cols: usize,
+    /// Terminal height in rows.
     pub rows: usize,
+    /// Total number of tabs.
     pub tab_count: usize,
+    /// Ordered list of tab names.
     pub tab_names: Vec<String>,
     #[serde(default)]
     pub tabs: Vec<TabSnapshot>,
@@ -47,7 +57,9 @@ pub struct SessionSnapshot {
 /// Metadata about a persisted session (returned by `list_sessions`).
 #[derive(Debug, Clone)]
 pub struct SessionInfo {
+    /// Session name extracted from the snapshot.
     pub name: String,
+    /// File path to the snapshot JSON file.
     pub path: std::path::PathBuf,
 }
 

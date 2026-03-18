@@ -83,6 +83,7 @@ pub struct Parser {
 }
 
 impl Parser {
+    /// Create a new parser in the ground state.
     pub fn new() -> Self {
         Self {
             state: State::Ground,

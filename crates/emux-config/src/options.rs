@@ -7,14 +7,23 @@ use crate::theme::Theme;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+    /// Color theme configuration.
     pub theme: Theme,
+    /// Key binding configuration.
     pub keys: KeyBindings,
+    /// Font size in points.
     pub font_size: f32,
+    /// Optional font family name override.
     pub font_family: Option<String>,
+    /// Maximum number of lines kept in the scrollback buffer.
     pub scrollback_limit: usize,
+    /// Number of columns per tab stop.
     pub tab_width: usize,
+    /// Cursor shape: "block", "underline", or "bar".
     pub cursor_shape: String,
+    /// Whether the cursor should blink.
     pub cursor_blink: bool,
+    /// Whether bold text is rendered using bright ANSI colors.
     pub bold_is_bright: bool,
 }
 
