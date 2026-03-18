@@ -1,0 +1,6 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+expression: result
+---
+jwilm@jwilm-desk [bold,fg:2]➜[bold,fg:2] [bold,fg:2] [bold,fg:6]~[bold,fg:6]/[bold,fg:6]c[bold,fg:6]o[bold,fg:6]d[bold,fg:6]e[bold,fg:6]/[bold,fg:6]a[bold,fg:6]l[bold,fg:6]a[bold,fg:6]c[bold,fg:6]r[bold,fg:6]i[bold,fg:6]t[bold,fg:6]t[bold,fg:6]y[bold,fg:6]  [fg:5]p[fg:5]r[fg:5]i[fg:5]n[fg:5]t[fg:5]f [fg:3]"[fg:3]f[fg:3]\[fg:3]e[fg:3][[fg:3]1[fg:3]0[fg:3]b[fg:3]"
+jwilm@jwilm-desk [bold,fg:2]➜[bold,fg:2] [bold,fg:2] [bold,fg:6]~[bold,fg:6]/[bold,fg:6]c[bold,fg:6]o[bold,fg:6]d[bold,fg:6]e[bold,fg:6]/[bold,fg:6]a[bold,fg:6]l[bold,fg:6]a[bold,fg:6]c[bold,fg:6]r[bold,fg:6]i[bold,fg:6]t[bold,fg:6]t[bold,fg:6]y[bold,fg:6]

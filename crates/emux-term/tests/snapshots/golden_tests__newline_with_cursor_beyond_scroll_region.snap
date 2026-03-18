@@ -1,0 +1,26 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+expression: result
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 58         getprogname());
+ 59     !!!!
+
+                                                   9   9

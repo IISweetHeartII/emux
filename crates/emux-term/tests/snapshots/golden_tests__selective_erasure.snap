@@ -1,0 +1,7 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+assertion_line: 193
+expression: result
+---
+ B
+ B

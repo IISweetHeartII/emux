@@ -1,0 +1,34 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+expression: result
+---
+drwxr-xr-x  5 undeadleech undeadleech 4.0K Feb 10 09:04 alacritty
+[undeadleech@archhq alacritty]$ ls
+alacritty                Cargo.toml       grid.json       rustfmt.toml
+alacritty_config         CHANGELOG.md     INSTALL.md      scripts
+alacritty_config_derive  config.json      LICENSE-APACHE  size.json
+alacritty.recording      CONTRIBUTING.md  LICENSE-MIT     target
+alacritty_terminal       docs             Makefile        TODO
+Cargo.lock               extra            README.md
+[undeadleech@archhq alacritty]$ ls
+alacritty                Cargo.toml       grid.json       rustfmt.toml
+alacritty_config         CHANGELOG.md     INSTALL.md      scripts
+alacritty_config_derive  config.json      LICENSE-APACHE  size.json
+alacritty.recording      CONTRIBUTING.md  LICENSE-MIT     target
+alacritty_terminal       docs             Makefile        TODO
+Cargo.lock               extra            README.md
+[undeadleech@archhq alacritty]$ ls
+alacritty                Cargo.toml       grid.json       rustfmt.toml
+alacritty_config         CHANGELOG.md     INSTALL.md      scripts
+alacritty_config_derive  config.json      LICENSE-APACHE  size.json
+alacritty.recording      CONTRIBUTING.md  LICENSE-MIT     target
+alacritty_terminal       docs             Makefile        TODO
+Cargo.lock               extra            README.md
+[undeadleech@archhq alacritty]$ ls
+alacritty                Cargo.toml       grid.json       rustfmt.toml
+alacritty_config         CHANGELOG.md     INSTALL.md      scripts
+alacritty_config_derive  config.json      LICENSE-APACHE  size.json
+alacritty.recording      CONTRIBUTING.md  LICENSE-MIT     target
+alacritty_terminal       docs             Makefile        TODO
+Cargo.lock               extra            README.md
+[undeadleech@archhq alacritty]$

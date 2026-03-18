@@ -1,0 +1,6 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+expression: result
+---
+Here[bold,reverse]%
+[fg:0,bg:9] [fg:0,bg:9]U[fg:0,bg:9]L[fg:0,bg:9] [fg:7,bg:8] [fg:7,bg:8]~[fg:7,bg:8]/[fg:7,bg:8]p[fg:7,bg:8]r[fg:7,bg:8]o[fg:7,bg:8]g[fg:7,bg:8]r[fg:7,bg:8]a[fg:7,bg:8]m[fg:7,bg:8]m[fg:7,bg:8]i[fg:7,bg:8]n[fg:7,bg:8]g[fg:7,bg:8]/[fg:7,bg:8]a[fg:7,bg:8]l[fg:7,bg:8]a[fg:7,bg:8]c[fg:7,bg:8]r[fg:7,bg:8]i[fg:7,bg:8]t[fg:7,bg:8]t[fg:7,bg:8]y[fg:7,bg:8]/[fg:7,bg:8]a[fg:7,bg:8]l[fg:7,bg:8]a[fg:7,bg:8]c[fg:7,bg:8]r[fg:7,bg:8]i[fg:7,bg:8]t[fg:7,bg:8]t[fg:7,bg:8]y[fg:7,bg:8] [fg:0,bg:9] [fg:0,bg:9]o[fg:0,bg:9]r[fg:0,bg:9]i[fg:0,bg:9]g[fg:0,bg:9]i[fg:0,bg:9]n[fg:0,bg:9]_[fg:0,bg:9]m[fg:0,bg:9]o[fg:0,bg:9]d[fg:0,bg:9]e[fg:0,bg:9] [fg:0,bg:9]↑[fg:0,bg:9]

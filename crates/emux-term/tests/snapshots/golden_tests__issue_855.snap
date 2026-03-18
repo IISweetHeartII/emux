@@ -1,0 +1,33 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+expression: result
+---
+jwilm@jwilm-desk [bold,fg:2]➜[bold,fg:2] [bold,fg:2] [bold,fg:6]~[bold,fg:6]/[bold,fg:6]c[bold,fg:6]o[bold,fg:6]d[bold,fg:6]e[bold,fg:6]/[bold,fg:6]a[bold,fg:6]l[bold,fg:6]a[bold,fg:6]c[bold,fg:6]r[bold,fg:6]i[bold,fg:6]t[bold,fg:6]t[bold,fg:6]y[bold,fg:6]  [fg:5]l[fg:5]l
+total 90M
+-rw-rw-r-- 1 jwilm jwilm  40K May  5  2017 ]
+-rw-rw-r-- 1 jwilm jwilm  128 May  4  2017 TODO.md
+-rw-rw-r-- 1 jwilm jwilm  12K Apr 19  2017 typescript
+-rw-rw-r-- 1 jwilm jwilm 3.0K Mar  7  2017 wego.example
+jwilm@jwilm-desk [bold,fg:2]➜[bold,fg:2] [bold,fg:2] [bold,fg:6]~[bold,fg:6]/[bold,fg:6]c[bold,fg:6]o[bold,fg:6]d[bold,fg:6]e[bold,fg:6]/[bold,fg:6]a[bold,fg:6]l[bold,fg:6]a[bold,fg:6]c[bold,fg:6]r[bold,fg:6]i[bold,fg:6]t[bold,fg:6]t[bold,fg:6]y[bold,fg:6]  [fg:5]t[fg:5]p[fg:5]u[fg:5]t cup 10
+
+
+
+jwilm@jwilm-desk [bold,fg:2]➜[bold,fg:2] [bold,fg:2] [bold,fg:6]~[bold,fg:6]/[bold,fg:6]c[bold,fg:6]o[bold,fg:6]d[bold,fg:6]e[bold,fg:6]/[bold,fg:6]a[bold,fg:6]l[bold,fg:6]a[bold,fg:6]c[bold,fg:6]r[bold,fg:6]i[bold,fg:6]t[bold,fg:6]t[bold,fg:6]y[bold,fg:6]  [fg:5]l[fg:5]l
+total 90M
+-rw-rw-r-- 1 jwilm jwilm  40K May  5  2017 ]
+-rw-rw-r-- 1 jwilm jwilm  35K May  8  2017 0001-wip.patch
+-rwxrwxr-x 1 jwilm jwilm  328 Oct 22 11:43 [bold,fg:2]A[bold,fg:2]l[bold,fg:2]a[bold,fg:2]c[bold,fg:2]r[bold,fg:2]i[bold,fg:2]t[bold,fg:2]t[bold,fg:2]y[bold,fg:2].[bold,fg:2]d[bold,fg:2]e[bold,fg:2]s[bold,fg:2]k[bold,fg:2]t[bold,fg:2]o[bold,fg:2]p
+-rw-rw-r-- 1 jwilm jwilm  139 Oct 22 11:43 alacritty.info
+-rw-rw-r-- 1 jwilm jwilm  14K Nov  2 08:25 alacritty_macos.yml
+-rwxrwxr-x 1 jwilm jwilm  16M Jan 25  2017 [bold,fg:2]a[bold,fg:2]l[bold,fg:2]a[bold,fg:2]c[bold,fg:2]r[bold,fg:2]i[bold,fg:2]t[bold,fg:2]t[bold,fg:2]y[bold,fg:2]-[bold,fg:2]p[bold,fg:2]r[bold,fg:2]e[bold,fg:2]-[bold,fg:2]g[bold,fg:2]c[bold,fg:2]o
+-rw-rw-r-- 1 jwilm jwilm  71K May 10  2017 alacritty.profile
+-rw-rw-r-- 1 jwilm jwilm 5.6K Nov 11 08:50 alacritty.recording
+-rwxrwxr-x 1 jwilm jwilm  15M Oct 28  2016 [bold,fg:2]a[bold,fg:2]l[bold,fg:2]a[bold,fg:2]c[bold,fg:2]r[bold,fg:2]i[bold,fg:2]t[bold,fg:2]t[bold,fg:2]y[bold,fg:2]_[bold,fg:2]s[bold,fg:2]h[bold,fg:2]a[bold,fg:2]d[bold,fg:2]e[bold,fg:2]r[bold,fg:2]_[bold,fg:2]c[bold,fg:2]o[bold,fg:2]l[bold,fg:2]o[bold,fg:2]r
+-rw-rw-r-- 1 jwilm jwilm 272K May  9  2017 alacritty.svg
+-rw-rw-r-- 1 jwilm jwilm 1019 Jan  1  2017 alacritty.txt
+-rwxrwxr-x 1 jwilm jwilm  15M Sep 24  2016 [bold,fg:2]a[bold,fg:2]l[bold,fg:2]a[bold,fg:2]c[bold,fg:2]r[bold,fg:2]i[bold,fg:2]t[bold,fg:2]t[bold,fg:2]y[bold,fg:2]_[bold,fg:2]w[bold,fg:2]i[bold,fg:2]t[bold,fg:2]h[bold,fg:2]_[bold,fg:2]c[bold,fg:2]o[bold,fg:2]r[bold,fg:2]r[bold,fg:2]u[bold,fg:2]p[bold,fg:2]t[bold,fg:2]_[bold,fg:2]b[bold,fg:2]u[bold,fg:2]g
+-rw-rw-r-- 1 jwilm jwilm  15K Nov  2 08:25 alacritty.yml
+drwxrwxr-x 3 jwilm jwilm 4.0K Oct 22 11:43 [bold,fg:4]a[bold,fg:4]s[bold,fg:4]s[bold,fg:4]e[bold,fg:4]t[bold,fg:4]s
+-rw-rw-r-- 1 jwilm jwilm 1.1K Jun 29  2016 build.rs
+-rw-rw-r-- 1 jwilm jwilm 2.1M May  8  2017 build.txt
+jwilm@jwilm-desk [bold,fg:2]➜[bold,fg:2] [bold,fg:2] [bold,fg:6]~[bold,fg:6]/[bold,fg:6]c[bold,fg:6]o[bold,fg:6]d[bold,fg:6]e[bold,fg:6]/[bold,fg:6]a[bold,fg:6]l[bold,fg:6]a[bold,fg:6]c[bold,fg:6]r[bold,fg:6]i[bold,fg:6]t[bold,fg:6]t[bold,fg:6]y[bold,fg:6]

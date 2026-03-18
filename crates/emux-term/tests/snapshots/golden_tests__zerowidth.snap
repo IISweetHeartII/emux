@@ -1,0 +1,7 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+expression: result
+---
+[fg:0,bg:9] [fg:0,bg:9]U[fg:0,bg:9]L[fg:0,bg:9] [fg:7,bg:8] [fg:7,bg:8]~[fg:7,bg:8]/[fg:7,bg:8]…[fg:7,bg:8]/[fg:7,bg:8]t[fg:7,bg:8]e[fg:7,bg:8]s[fg:7,bg:8]t[fg:7,bg:8]s[fg:7,bg:8]/[fg:7,bg:8]r[fg:7,bg:8]e[fg:7,bg:8]f[fg:7,bg:8]/[fg:7,bg:8]z[fg:7,bg:8]e[fg:7,bg:8]r[fg:7,bg:8]o[fg:7,bg:8]w[fg:7,bg:8]i[fg:7,bg:8]d[fg:7,bg:8]t[fg:7,bg:8]h[fg:7,bg:8] [fg:0,bg:9] [fg:0,bg:9]z[fg:0,bg:9]e[fg:0,bg:9]r[fg:0,bg:9]o[fg:0,bg:9]w[fg:0,bg:9]i[fg:0,bg:9]d[fg:0,bg:9]t[fg:0,bg:9]h[fg:0,bg:9]-[fg:0,bg:9]s[fg:0,bg:9]l[fg:0,bg:9]i[fg:0,bg:9]c[fg:0,bg:9]e[fg:0,bg:9]  echo "( [reverse]<[reverse]0[reverse]3[reverse]6[reverse]1[reverse]>° [reverse]<[reverse]0[reverse]3[reverse]5[reverse]c[reverse]>ʖ [reverse]<[reverse]0[reverse]3[reverse]6[reverse]1[reverse]>°)"
+( ° ʖ °)
+[fg:0,bg:9] [fg:0,bg:9]U[fg:0,bg:9]L[fg:0,bg:9] [fg:7,bg:8] [fg:7,bg:8]~[fg:7,bg:8]/[fg:7,bg:8]…[fg:7,bg:8]/[fg:7,bg:8]t[fg:7,bg:8]e[fg:7,bg:8]s[fg:7,bg:8]t[fg:7,bg:8]s[fg:7,bg:8]/[fg:7,bg:8]r[fg:7,bg:8]e[fg:7,bg:8]f[fg:7,bg:8]/[fg:7,bg:8]z[fg:7,bg:8]e[fg:7,bg:8]r[fg:7,bg:8]o[fg:7,bg:8]w[fg:7,bg:8]i[fg:7,bg:8]d[fg:7,bg:8]t[fg:7,bg:8]h[fg:7,bg:8] [fg:0,bg:9] [fg:0,bg:9]z[fg:0,bg:9]e[fg:0,bg:9]r[fg:0,bg:9]o[fg:0,bg:9]w[fg:0,bg:9]i[fg:0,bg:9]d[fg:0,bg:9]t[fg:0,bg:9]h[fg:0,bg:9]-[fg:0,bg:9]s[fg:0,bg:9]l[fg:0,bg:9]i[fg:0,bg:9]c[fg:0,bg:9]e[fg:0,bg:9]

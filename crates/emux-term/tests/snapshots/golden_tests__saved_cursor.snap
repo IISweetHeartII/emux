@@ -1,0 +1,12 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+expression: result
+---
+[undeadleech@archhq saved_cursor]$ echo -e "\e7 \e(0 test \e8 xxx"
+ xxxs├
+[undeadleech@archhq saved_cursor]$ echo -e "\e[?1049h \e(0 test \e[?1049l xxx"
+ xxx
+[undeadleech@archhq saved_cursor]$ echo -e "\e7 \e(0 \e[?1049h test \e[?1049l \e8 xxx"
+   │││
+[┤┼de▒d┌eech@▒rchh─ s▒┴ed_c┤rsor]$ e│i├
+e│i├

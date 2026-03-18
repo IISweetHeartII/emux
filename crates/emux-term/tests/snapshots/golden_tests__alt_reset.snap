@@ -1,0 +1,6 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+expression: result
+---
+[kchibisov@NightLord alacritty]$
+exit

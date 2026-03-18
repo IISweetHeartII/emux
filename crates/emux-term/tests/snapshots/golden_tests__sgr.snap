@@ -1,0 +1,30 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+expression: result
+---
+[undeadleech@archhq sgr]$ echo -e "\e[9;38:2:255:0:255;4mTEST\e[0m"
+[underline,strike,fg:255,0,255]T[underline,strike,fg:255,0,255]E[underline,strike,fg:255,0,255]S[underline,strike,fg:255,0,255]T
+[undeadleech@archhq sgr]$ echo -e "\e[9;38:2:0:255:0:255;4mTEST\e[0m"
+[underline,strike,fg:0,255,0]T[underline,strike,fg:0,255,0]E[underline,strike,fg:0,255,0]S[underline,strike,fg:0,255,0]T
+[undeadleech@archhq sgr]$ echo -e "\e[9;38:5:1;4mTEST\e[0m"
+[underline,strike,fg:1]T[underline,strike,fg:1]E[underline,strike,fg:1]S[underline,strike,fg:1]T
+[undeadleech@archhq sgr]$ echo -e "\e[9;48:2:255:0:255;4mTEST\e[0m"
+[underline,strike,bg:255,0,255]T[underline,strike,bg:255,0,255]E[underline,strike,bg:255,0,255]S[underline,strike,bg:255,0,255]T
+[undeadleech@archhq sgr]$ echo -e "\e[9;48:2:0:255:0:255;4mTEST\e[0m"
+[underline,strike,bg:0,255,0]T[underline,strike,bg:0,255,0]E[underline,strike,bg:0,255,0]S[underline,strike,bg:0,255,0]T
+[undeadleech@archhq sgr]$ echo -e "\e[9;48:5:1;4mTEST\e[0m"
+[underline,strike,bg:1]T[underline,strike,bg:1]E[underline,strike,bg:1]S[underline,strike,bg:1]T
+[undeadleech@archhq sgr]$ echo -e "\e[9;38;2;255;0;255;4mTEST\e[0m"
+[underline,strike,fg:255,0,255]T[underline,strike,fg:255,0,255]E[underline,strike,fg:255,0,255]S[underline,strike,fg:255,0,255]T
+[undeadleech@archhq sgr]$ echo -e "\e[9;38;2;0;255;0;255;4mTEST\e[0m"
+[underline,strike,fg:0,255,0]T[underline,strike,fg:0,255,0]E[underline,strike,fg:0,255,0]S[underline,strike,fg:0,255,0]T
+[undeadleech@archhq sgr]$ echo -e "\e[9;38;5;1;4mTEST\e[0m"
+[underline,strike,fg:1]T[underline,strike,fg:1]E[underline,strike,fg:1]S[underline,strike,fg:1]T
+[undeadleech@archhq sgr]$ echo -e "\e[9;48;2;255;0;255;4mTEST\e[0m"
+[underline,strike,bg:255,0,255]T[underline,strike,bg:255,0,255]E[underline,strike,bg:255,0,255]S[underline,strike,bg:255,0,255]T
+[undeadleech@archhq sgr]$ echo -e "\e[9;48;2;0;255;0;255;4mTEST\e[0m"
+[underline,strike,bg:0,255,0]T[underline,strike,bg:0,255,0]E[underline,strike,bg:0,255,0]S[underline,strike,bg:0,255,0]T
+[undeadleech@archhq sgr]$ echo -e "\e[9;48;5;1;4mTEST\e[0m"
+[underline,strike,bg:1]T[underline,strike,bg:1]E[underline,strike,bg:1]S[underline,strike,bg:1]T
+[undeadleech@archhq sgr]$ exit
+exit

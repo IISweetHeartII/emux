@@ -1,0 +1,6 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+expression: result
+---
+[bg:1][[bg:1]u[bg:1]n[bg:1]d[bg:1]e[bg:1]a[bg:1]d[bg:1]l[bg:1]e[bg:1]e[bg:1]c[bg:1]h[bg:1]@[bg:1]a[bg:1]r[bg:1]c[bg:1]h[bg:1]h[bg:1]q[bg:1] [bg:1]c[bg:1]o[bg:1]l[bg:1]o[bg:1]r[bg:1]e[bg:1]d[bg:1]_[bg:1]r[bg:1]e[bg:1]s[bg:1]e[bg:1]t[bg:1]][bg:1]$[bg:1] [bg:1]p[bg:1]r[bg:1]i[bg:1]n[bg:1]t[bg:1]f[bg:1] [bg:1]"[bg:1]\[bg:1]e[bg:1][[bg:1]0[bg:1]m[bg:1]"
+[undeadleech@archhq colored_reset]$ ls

@@ -1,0 +1,34 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+expression: result
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+^C
+[fg:0,bg:9] [fg:0,bg:9]U[fg:0,bg:9]L[fg:0,bg:9] [fg:7,bg:8] [fg:7,bg:8]~[fg:7,bg:8]/[fg:7,bg:8]…[fg:7,bg:8]/[fg:7,bg:8]t[fg:7,bg:8]e[fg:7,bg:8]s[fg:7,bg:8]t[fg:7,bg:8]s[fg:7,bg:8]/[fg:7,bg:8]r[fg:7,bg:8]e[fg:7,bg:8]f[fg:7,bg:8]/[fg:7,bg:8]r[fg:7,bg:8]e[fg:7,bg:8]g[fg:7,bg:8]i[fg:7,bg:8]o[fg:7,bg:8]n[fg:7,bg:8]_[fg:7,bg:8]s[fg:7,bg:8]c[fg:7,bg:8]r[fg:7,bg:8]o[fg:7,bg:8]l[fg:7,bg:8]l[fg:7,bg:8]_[fg:7,bg:8]…[fg:7,bg:8] [fg:0,bg:9] [fg:0,bg:9]s[fg:0,bg:9]c[fg:0,bg:9]r[fg:0,bg:9]o[fg:0,bg:9]l[fg:0,bg:9]l[fg:0,bg:9]_[fg:0,bg:9]d[fg:0,bg:9]o[fg:0,bg:9]w[fg:0,bg:9]n[fg:0,bg:9]  exit

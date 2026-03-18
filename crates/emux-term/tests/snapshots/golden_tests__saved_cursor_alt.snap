@@ -1,0 +1,7 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+expression: result
+---
+ xxxt
+[undeadleech@archhq saved_cursor_alt]$ exit
+exit

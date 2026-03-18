@@ -1,0 +1,18 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+assertion_line: 193
+expression: result
+---
+[undeadleech@undeadlap underline]$ echo -e "\e[4mUNDERLINED\e[0m"
+[underline]U[underline]N[underline]D[underline]E[underline]R[underline]L[underline]I[underline]N[underline]E[underline]D
+[undeadleech@undeadlap underline]$ echo -e "\e[4:1mUNDERLINED\e[4:0m"
+[underline]U[underline]N[underline]D[underline]E[underline]R[underline]L[underline]I[underline]N[underline]E[underline]D
+[undeadleech@undeadlap underline]$ echo -e "\e[4:2mUNDERLINED\e[24m"
+[double-underline]U[double-underline]N[double-underline]D[double-underline]E[double-underline]R[double-underline]L[double-underline]I[double-underline]N[double-underline]E[double-underline]D
+[undeadleech@undeadlap underline]$ echo -e "\e[4:3;21mUNDERLINED\e[0m"
+[double-underline]U[double-underline]N[double-underline]D[double-underline]E[double-underline]R[double-underline]L[double-underline]I[double-underline]N[double-underline]E[double-underline]D
+[undeadleech@undeadlap underline]$ echo -e "\e[4;4:2mUNDERLINED\e[0m"
+[double-underline]U[double-underline]N[double-underline]D[double-underline]E[double-underline]R[double-underline]L[double-underline]I[double-underline]N[double-underline]E[double-underline]D
+[undeadleech@undeadlap underline]$ echo -e "\e[4:2;4:1mUNDERLINED\e[0m"
+[underline]U[underline]N[underline]D[underline]E[underline]R[underline]L[underline]I[underline]N[underline]E[underline]D
+[undeadleech@undeadlap underline]$

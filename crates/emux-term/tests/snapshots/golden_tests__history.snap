@@ -1,0 +1,33 @@
+---
+source: crates/emux-term/tests/golden_tests.rs
+expression: result
+---
+28
+27
+26
+25
+24
+23
+22
+21
+20
+19
+18
+17
+16
+15
+14
+13
+12
+11
+10
+9
+8
+7
+6
+5
+4
+3
+2
+[bold,reverse]%
+[fg:0,bg:9] [fg:0,bg:9]U[fg:0,bg:9]L[fg:0,bg:9] [fg:7,bg:8] [fg:7,bg:8]~[fg:7,bg:8]/[fg:7,bg:8]…[fg:7,bg:8]/[fg:7,bg:8]t[fg:7,bg:8]e[fg:7,bg:8]s[fg:7,bg:8]t[fg:7,bg:8]s[fg:7,bg:8]/[fg:7,bg:8]r[fg:7,bg:8]e[fg:7,bg:8]f[fg:7,bg:8]/[fg:7,bg:8]h[fg:7,bg:8]i[fg:7,bg:8]s[fg:7,bg:8]t[fg:7,bg:8]o[fg:7,bg:8]r[fg:7,bg:8]y[fg:7,bg:8] [fg:0,bg:9] [fg:0,bg:9]i[fg:0,bg:9]s[fg:0,bg:9]s[fg:0,bg:9]u[fg:0,bg:9]e[fg:0,bg:9]-[fg:0,bg:9]1[fg:0,bg:9]2[fg:0,bg:9]4[fg:0,bg:9]4[fg:0,bg:9]
