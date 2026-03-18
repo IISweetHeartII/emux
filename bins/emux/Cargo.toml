@@ -1,0 +1,27 @@
+[package]
+name = "emux"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "A GPU-ready terminal multiplexer — zero config, built-in splits, tabs, and session persistence"
+homepage = "https://github.com/IISweetHeartII/emux"
+repository.workspace = true
+keywords = ["terminal", "multiplexer", "tmux", "tui"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+emux-vt.workspace = true
+emux-term.workspace = true
+emux-pty.workspace = true
+emux-render.workspace = true
+emux-config.workspace = true
+emux-mux.workspace = true
+emux-daemon.workspace = true
+emux-ipc.workspace = true
+crossterm.workspace = true
+libc = "0.2"
+
+[dev-dependencies]
+emux-pty.workspace = true
+nix = { version = "0.31", features = ["term", "process", "fs"] }
