@@ -1,0 +1,4 @@
+# Treat VT recording files as binary to preserve exact byte sequences.
+# These files contain terminal escape sequences and raw control characters
+# that must not be altered by git's line-ending normalization.
+*.recording binary
