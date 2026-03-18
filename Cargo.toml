@@ -1,0 +1,67 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/emux-vt",
+    "crates/emux-term",
+    "crates/emux-pty",
+    "crates/emux-mux",
+    "crates/emux-config",
+    "crates/emux-daemon",
+    "crates/emux-ipc",
+    "crates/emux-render",
+    "bins/emux",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/IISweetHeartII/emux"
+description = "A GPU-ready terminal multiplexer — zero config, built-in splits, tabs, and session persistence"
+
+[workspace.dependencies]
+# Internal crates
+emux-vt = { version = "0.1.0", path = "crates/emux-vt", features = ["serde"] }
+emux-term = { version = "0.1.0", path = "crates/emux-term" }
+emux-pty = { version = "0.1.0", path = "crates/emux-pty" }
+emux-mux = { version = "0.1.0", path = "crates/emux-mux" }
+emux-config = { version = "0.1.0", path = "crates/emux-config" }
+emux-daemon = { version = "0.1.0", path = "crates/emux-daemon" }
+emux-ipc = { version = "0.1.0", path = "crates/emux-ipc" }
+emux-render = { version = "0.1.0", path = "crates/emux-render" }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1"
+
+# PTY
+nix = { version = "0.31", features = ["term", "process", "fs"] }
+portable-pty = "0.9"
+windows-sys = { version = "0.61", features = [
+    "Win32_System_Console",
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Pipes",
+] }
+
+# Async / IO
+tokio = { version = "1", features = ["full"] }
+mio = { version = "1", features = ["os-poll", "os-ext"] }
+
+# Terminal UI
+crossterm = "0.29"
+
+# Testing
+insta = { version = "1", features = ["json"] }
+
+# Benchmarking
+criterion = { version = "0.8", features = ["html_reports"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
