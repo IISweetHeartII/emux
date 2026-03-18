@@ -1,0 +1,23 @@
+[package]
+name = "emux-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+emux-vt = { path = "../crates/emux-vt" }
+emux-term = { path = "../crates/emux-term" }
+
+[[bin]]
+name = "fuzz_parser"
+path = "fuzz_targets/fuzz_parser.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_terminal"
+path = "fuzz_targets/fuzz_terminal.rs"
+doc = false
