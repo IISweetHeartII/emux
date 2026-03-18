@@ -1,0 +1,152 @@
+name: Auto Label Issues and PRs
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  auto-label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add triage label to new issues
+        if: github.event_name == 'issues'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.issue.labels.map(l => l.name);
+            if (!labels.includes('status: needs triage')) {
+              github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['status: needs triage']
+              });
+            }
+
+      - name: Label PRs based on files changed
+        if: github.event_name == 'pull_request_target'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const labels = new Set();
+
+            for (const file of files) {
+              const path = file.filename;
+
+              // Area labels based on crate paths
+              if (path.startsWith('crates/emux-vt/')) {
+                labels.add('area: emux-vt');
+              }
+              if (path.startsWith('crates/emux-term/')) {
+                labels.add('area: emux-term');
+              }
+              if (path.startsWith('crates/emux-pty/')) {
+                labels.add('area: emux-pty');
+              }
+              if (path.startsWith('crates/emux-mux/')) {
+                labels.add('area: emux-mux');
+              }
+              if (path.startsWith('crates/emux-config/')) {
+                labels.add('area: emux-config');
+              }
+              if (path.startsWith('crates/emux-daemon/')) {
+                labels.add('area: emux-daemon');
+              }
+              if (path.startsWith('crates/emux-ipc/')) {
+                labels.add('area: emux-ipc');
+              }
+              if (path.startsWith('crates/emux-render/')) {
+                labels.add('area: emux-render');
+              }
+              if (path.startsWith('bins/emux/')) {
+                labels.add('area: cli');
+              }
+              if (path.startsWith('.github/') || path.includes('Dockerfile') || path.includes('docker')) {
+                labels.add('area: infrastructure');
+              }
+              if (path.includes('/test') || path.includes('/tests') || path.includes('_test.rs') || path.startsWith('fuzz/')) {
+                labels.add('area: testing');
+              }
+              if (path.includes('README') || path.includes('docs/') || path.endsWith('.md')) {
+                labels.add('type: documentation');
+              }
+
+              // Dependencies
+              if (path.includes('Cargo.toml') || path.includes('Cargo.lock')) {
+                labels.add('dependencies');
+              }
+            }
+
+            // Add labels if any were detected
+            if (labels.size > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: Array.from(labels)
+              });
+            }
+
+      - name: Label PRs based on title (conventional commits)
+        if: github.event_name == 'pull_request_target'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const title = pr.title;
+            const body = (pr.body || '').toLowerCase();
+            const labels = [];
+
+            // Type labels from PR title (conventional commits)
+            const typeMap = {
+              'feat': 'type: feature',
+              'fix': 'type: bug',
+              'docs': 'type: documentation',
+              'refactor': 'type: refactor',
+              'perf': 'type: performance',
+              'style': 'type: enhancement',
+              'test': 'area: testing',
+              'ci': 'area: infrastructure',
+              'build': 'area: infrastructure',
+              'chore': 'area: infrastructure',
+            };
+
+            const match = title.match(/^(\w+)(\(.+\))?!?:/);
+            if (match) {
+              const type = match[1].toLowerCase();
+              if (typeMap[type]) {
+                labels.push(typeMap[type]);
+              }
+            }
+
+            // Breaking changes
+            if (title.includes('!:') || body.includes('breaking change') || body.includes('breaking:')) {
+              labels.push('breaking change');
+            }
+
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: labels,
+              });
+            }

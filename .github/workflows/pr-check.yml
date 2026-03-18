@@ -1,0 +1,32 @@
+name: PR Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  title-check:
+    name: Conventional commit title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title format
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request.title;
+            const pattern = /^(feat|fix|docs|refactor|perf|test|chore|ci|build|style|revert)(\(.+\))?!?:\s.+/;
+
+            if (!pattern.test(title)) {
+              core.setFailed(
+                `PR title "${title}" does not follow Conventional Commits format.\n` +
+                `Expected: <type>(<scope>): <description>\n` +
+                `Types: feat, fix, docs, refactor, perf, test, chore, ci, build, style, revert\n` +
+                `Examples:\n` +
+                `  feat(vt): add DA2 response support\n` +
+                `  fix: resolve UTF-8 reflow crash\n` +
+                `  docs(readme): update installation instructions`
+              );
+            }

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/IISweetHeartII/emux/discussions
+    about: Ask questions, share ideas, or discuss emux with the community
+  - name: Security Issue
+    url: https://github.com/IISweetHeartII/emux/security/advisories/new
+    about: Report security vulnerabilities privately
