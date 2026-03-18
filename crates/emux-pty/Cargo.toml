@@ -1,0 +1,20 @@
+[package]
+name = "emux-pty"
+description = "Cross-platform PTY integration (Unix forkpty, Windows ConPTY) for emux"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+portable-pty.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+nix.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys.workspace = true
+
+[target.'cfg(unix)'.dev-dependencies]
+nix.workspace = true
