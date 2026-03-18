@@ -1,0 +1,18 @@
+[package]
+name = "emux-daemon"
+description = "Session daemon (server, client, persistence) for emux"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+emux-mux.workspace = true
+emux-config.workspace = true
+emux-ipc.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
