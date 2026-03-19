@@ -209,23 +209,14 @@ pub(crate) fn cmd_upgrade() -> Result<(), crate::AppError> {
     Ok(())
 }
 
-/// Check for updates in the background and print a notice if a newer version
-/// is available. This is designed to be called at startup without blocking.
+/// Auto-update on startup. Checks once per day; if a newer version exists,
+/// downloads and replaces the binary automatically, then prompts restart.
 pub(crate) fn check_update_notice() {
     // Only check once per day — store last check timestamp.
     let marker_path = env::temp_dir().join("emux-update-check");
     if let Ok(meta) = fs::metadata(&marker_path) {
         if let Ok(modified) = meta.modified() {
             if modified.elapsed().unwrap_or_default().as_secs() < 86400 {
-                // Read cached result.
-                if let Ok(cached) = fs::read_to_string(&marker_path) {
-                    let cached = cached.trim();
-                    if !cached.is_empty() && is_newer(CURRENT_VERSION, cached) {
-                        eprintln!(
-                            "\x1b[33memux v{cached} is available.\x1b[0m Run \x1b[1memux upgrade\x1b[0m to update."
-                        );
-                    }
-                }
                 return;
             }
         }
@@ -233,13 +224,32 @@ pub(crate) fn check_update_notice() {
 
     // Spawn a background thread so we don't block startup.
     std::thread::spawn(move || {
-        if let Ok(release) = fetch_latest_release() {
-            // Cache the result.
-            let _ = fs::write(&marker_path, &release.version);
-            if is_newer(CURRENT_VERSION, &release.version) {
+        let Ok(release) = fetch_latest_release() else {
+            return;
+        };
+
+        // Cache the check time regardless of result.
+        let _ = fs::write(&marker_path, &release.version);
+
+        if !is_newer(CURRENT_VERSION, &release.version) {
+            return;
+        }
+
+        eprintln!(
+            "\x1b[33mUpdating emux v{CURRENT_VERSION} → v{}...\x1b[0m",
+            release.version
+        );
+
+        match download_and_replace(&release) {
+            Ok(()) => {
                 eprintln!(
-                    "\x1b[33memux v{} is available.\x1b[0m Run \x1b[1memux upgrade\x1b[0m to update.",
+                    "\x1b[32mUpdated to emux v{}.\x1b[0m Restart emux to use the new version.",
                     release.version
+                );
+            }
+            Err(e) => {
+                eprintln!(
+                    "\x1b[31mAuto-update failed: {e}\x1b[0m Run \x1b[1memux upgrade\x1b[0m to retry."
                 );
             }
         }
