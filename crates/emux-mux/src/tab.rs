@@ -81,6 +81,7 @@ pub struct Tab {
     current_swap_index: Option<usize>,
     pixel_width: Option<usize>,
     pixel_height: Option<usize>,
+    synchronized: bool,
 }
 
 impl Tab {
@@ -110,6 +111,7 @@ impl Tab {
             current_swap_index: None,
             pixel_width: None,
             pixel_height: None,
+            synchronized: false,
         }
     }
 
@@ -1091,6 +1093,23 @@ impl Tab {
         }
     }
 
+    // -----------------------------------------------------------------------
+    // Notification support
+    // -----------------------------------------------------------------------
+
+    /// Returns true if any pane in this tab has an unread notification.
+    pub fn has_notification(&self) -> bool {
+        self.panes.values().any(|p| p.has_notification())
+            || self.floating_panes.iter().any(|fp| fp.pane.has_notification())
+    }
+
+    /// Returns the number of panes with unread notifications.
+    pub fn notification_count(&self) -> usize {
+        let tiled = self.panes.values().filter(|p| p.has_notification()).count();
+        let floating = self.floating_panes.iter().filter(|fp| fp.pane.has_notification()).count();
+        tiled + floating
+    }
+
     /// Swap the z-order of two floating panes.
     pub fn swap_floating_z_order(&mut self, a: PaneId, b: PaneId) -> bool {
         let idx_a = self.floating_panes.iter().position(|fp| fp.pane.id() == a);
@@ -1102,9 +1121,149 @@ impl Tab {
             false
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Synchronized panes support
+    // -----------------------------------------------------------------------
+
+    /// Toggle synchronized input mode. When enabled, keystrokes sent to the
+    /// focused pane are simultaneously forwarded to all other panes in the tab.
+    /// Returns the new state.
+    pub fn toggle_sync(&mut self) -> bool {
+        self.synchronized = !self.synchronized;
+        self.synchronized
+    }
+
+    /// Whether synchronized input mode is enabled.
+    pub fn is_synchronized(&self) -> bool {
+        self.synchronized
+    }
+
+    /// Returns the IDs of all panes that should receive forwarded input when
+    /// synchronized mode is active — i.e. every pane except the currently
+    /// focused one. Includes visible floating panes.
+    pub fn sync_target_pane_ids(&self) -> Vec<PaneId> {
+        let focused = self.active_pane;
+        let mut ids: Vec<PaneId> = self.panes.keys().copied()
+            .filter(|id| Some(*id) != focused)
+            .collect();
+        if self.show_floating {
+            ids.extend(
+                self.floating_panes.iter()
+                    .filter(|fp| fp.visible && Some(fp.pane.id()) != focused)
+                    .map(|fp| fp.pane.id()),
+            );
+        }
+        ids
+    }
 }
 
 /// Check if two ranges [a_start, a_end) and [b_start, b_end) overlap.
 fn ranges_overlap(a_start: usize, a_end: usize, b_start: usize, b_end: usize) -> bool {
     a_start < b_end && b_start < a_end
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tab_has_no_notification_by_default() {
+        let tab = Tab::new(0, "test", 80, 25);
+        assert!(!tab.has_notification());
+        assert_eq!(tab.notification_count(), 0);
+    }
+
+    #[test]
+    fn tab_has_notification_from_pane() {
+        let mut tab = Tab::new(0, "test", 80, 25);
+        let pane_id = tab.active_pane_id().unwrap();
+        tab.pane_mut(pane_id).unwrap().set_notification("Hello");
+        assert!(tab.has_notification());
+        assert_eq!(tab.notification_count(), 1);
+    }
+
+    #[test]
+    fn tab_notification_count_multiple_panes() {
+        let mut tab = Tab::new(0, "test", 80, 25);
+        // Split to create a second pane
+        let new_id = tab.split_pane(SplitDirection::Vertical).unwrap();
+        let first_id = tab.pane_ids()[0];
+        tab.pane_mut(first_id).unwrap().set_notification("A");
+        tab.pane_mut(new_id).unwrap().set_notification("B");
+        assert_eq!(tab.notification_count(), 2);
+    }
+
+    #[test]
+    fn tab_notification_cleared() {
+        let mut tab = Tab::new(0, "test", 80, 25);
+        let pane_id = tab.active_pane_id().unwrap();
+        tab.pane_mut(pane_id).unwrap().set_notification("Hello");
+        assert!(tab.has_notification());
+        tab.pane_mut(pane_id).unwrap().clear_notification();
+        assert!(!tab.has_notification());
+        assert_eq!(tab.notification_count(), 0);
+    }
+
+    #[test]
+    fn tab_notification_from_floating_pane() {
+        let mut tab = Tab::new(0, "test", 80, 25);
+        let fp_id = tab.new_floating_pane();
+        tab.floating_pane_mut(fp_id).unwrap().pane.set_notification("Float!");
+        assert!(tab.has_notification());
+        assert_eq!(tab.notification_count(), 1);
+    }
+
+    #[test]
+    fn sync_default_off() {
+        let tab = Tab::new(0, "test", 80, 25);
+        assert!(!tab.is_synchronized());
+    }
+
+    #[test]
+    fn sync_toggle() {
+        let mut tab = Tab::new(0, "test", 80, 25);
+        assert!(!tab.is_synchronized());
+        assert!(tab.toggle_sync());
+        assert!(tab.is_synchronized());
+        assert!(!tab.toggle_sync());
+        assert!(!tab.is_synchronized());
+    }
+
+    #[test]
+    fn sync_target_pane_ids_returns_all_except_focused() {
+        let mut tab = Tab::new(0, "test", 80, 25);
+        let p1 = tab.split_pane(SplitDirection::Vertical).unwrap();
+        let p2 = tab.split_pane(SplitDirection::Vertical).unwrap();
+        // p2 is now the active pane (split_pane focuses the new pane)
+        assert_eq!(tab.active_pane_id(), Some(p2));
+
+        let targets = tab.sync_target_pane_ids();
+        assert_eq!(targets.len(), 2);
+        assert!(!targets.contains(&p2));
+        // The initial pane (id 0) and p1 should both be targets
+        assert!(targets.contains(&0));
+        assert!(targets.contains(&p1));
+    }
+
+    #[test]
+    fn sync_target_pane_ids_single_pane_returns_empty() {
+        let tab = Tab::new(0, "test", 80, 25);
+        let targets = tab.sync_target_pane_ids();
+        assert!(targets.is_empty());
+    }
+
+    #[test]
+    fn sync_target_pane_ids_includes_floating() {
+        let mut tab = Tab::new(0, "test", 80, 25);
+        let fp_id = tab.new_floating_pane();
+        // new_floating_pane focuses the floating pane
+        assert_eq!(tab.active_pane_id(), Some(fp_id));
+
+        let targets = tab.sync_target_pane_ids();
+        // The tiled pane (id 0) should be a target
+        assert!(targets.contains(&0));
+        // The focused floating pane should NOT be a target
+        assert!(!targets.contains(&fp_id));
+    }
 }

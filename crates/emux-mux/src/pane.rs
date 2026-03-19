@@ -1,5 +1,7 @@
 //! Pane management — individual terminal instances within a window.
 
+use std::path::{Path, PathBuf};
+
 pub type PaneId = u32;
 
 /// Size of a pane in rows and columns.
@@ -37,6 +39,9 @@ pub struct Pane {
     scroll_offset: usize,
     constraints: PaneConstraints,
     scrollback: Vec<String>,
+    has_notification: bool,
+    notification_text: Option<String>,
+    working_directory: Option<PathBuf>,
 }
 
 impl Pane {
@@ -51,6 +56,9 @@ impl Pane {
             scroll_offset: 0,
             constraints: PaneConstraints::default(),
             scrollback: Vec::new(),
+            has_notification: false,
+            notification_text: None,
+            working_directory: None,
         }
     }
 
@@ -155,5 +163,152 @@ impl Pane {
     /// Get the scrollback buffer.
     pub fn scrollback(&self) -> &[String] {
         &self.scrollback
+    }
+
+    /// Set the working directory of this pane.
+    pub fn set_working_directory(&mut self, path: PathBuf) {
+        self.working_directory = Some(path);
+    }
+
+    /// Get the working directory of this pane, if known.
+    pub fn working_directory(&self) -> Option<&Path> {
+        self.working_directory.as_deref()
+    }
+
+    /// Whether this pane has an unread notification.
+    pub fn has_notification(&self) -> bool {
+        self.has_notification
+    }
+
+    /// Get the notification text, if any.
+    pub fn notification_text(&self) -> Option<&str> {
+        self.notification_text.as_deref()
+    }
+
+    /// Set a notification on this pane.
+    pub fn set_notification(&mut self, text: impl Into<String>) {
+        self.has_notification = true;
+        self.notification_text = Some(text.into());
+    }
+
+    /// Clear the notification on this pane.
+    pub fn clear_notification(&mut self) {
+        self.has_notification = false;
+        self.notification_text = None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pane_notification_default() {
+        let p = Pane::new(0, 80, 25);
+        assert!(!p.has_notification());
+        assert!(p.notification_text().is_none());
+    }
+
+    #[test]
+    fn pane_set_notification() {
+        let mut p = Pane::new(0, 80, 25);
+        p.set_notification("Build complete");
+        assert!(p.has_notification());
+        assert_eq!(p.notification_text(), Some("Build complete"));
+    }
+
+    #[test]
+    fn pane_clear_notification() {
+        let mut p = Pane::new(0, 80, 25);
+        p.set_notification("Hello");
+        p.clear_notification();
+        assert!(!p.has_notification());
+        assert!(p.notification_text().is_none());
+    }
+
+    #[test]
+    fn pane_resize() {
+        let mut p = Pane::new(0, 80, 25);
+        assert_eq!(p.size().cols, 80);
+        assert_eq!(p.size().rows, 25);
+        p.resize(120, 40);
+        assert_eq!(p.size().cols, 120);
+        assert_eq!(p.size().rows, 40);
+    }
+
+    #[test]
+    fn pane_scroll_operations() {
+        let mut p = Pane::new(0, 80, 25);
+        p.push_scrollback("line 1".to_string());
+        p.push_scrollback("line 2".to_string());
+        p.push_scrollback("line 3".to_string());
+        assert_eq!(p.scrollback().len(), 3);
+        assert_eq!(p.scroll_offset(), 0);
+
+        p.scroll_up(5);
+        assert_eq!(p.scroll_offset(), 5);
+
+        p.scroll_down(3);
+        assert_eq!(p.scroll_offset(), 2);
+
+        p.scroll_to_top();
+        assert_eq!(p.scroll_offset(), usize::MAX);
+
+        p.scroll_to_bottom();
+        assert_eq!(p.scroll_offset(), 0);
+    }
+
+    #[test]
+    fn pane_title_operations() {
+        let mut p = Pane::new(0, 80, 25);
+        assert_eq!(p.title(), "");
+
+        p.set_title("my pane");
+        assert_eq!(p.title(), "my pane");
+
+        p.set_title("renamed");
+        assert_eq!(p.title(), "renamed");
+
+        // undo should restore previous title
+        assert!(p.undo_rename());
+        assert_eq!(p.title(), "my pane");
+
+        // undo again with nothing to restore
+        assert!(!p.undo_rename());
+    }
+
+    #[test]
+    fn pane_constraints() {
+        let mut p = Pane::new(0, 80, 25);
+        assert!(!p.has_fixed_cols());
+        assert!(!p.has_fixed_rows());
+
+        p.set_constraints(PaneConstraints {
+            fixed_cols: Some(40),
+            fixed_rows: None,
+        });
+        assert!(p.has_fixed_cols());
+        assert!(!p.has_fixed_rows());
+        assert_eq!(p.constraints().fixed_cols, Some(40));
+
+        p.set_constraints(PaneConstraints {
+            fixed_cols: None,
+            fixed_rows: Some(10),
+        });
+        assert!(!p.has_fixed_cols());
+        assert!(p.has_fixed_rows());
+        assert_eq!(p.constraints().fixed_rows, Some(10));
+    }
+
+    #[test]
+    fn pane_working_directory() {
+        let mut p = Pane::new(0, 80, 25);
+        assert!(p.working_directory().is_none());
+
+        p.set_working_directory(PathBuf::from("/home/user/projects"));
+        assert_eq!(
+            p.working_directory(),
+            Some(Path::new("/home/user/projects"))
+        );
     }
 }

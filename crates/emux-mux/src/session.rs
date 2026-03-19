@@ -1,6 +1,7 @@
 //! Session management — groups of tabs.
 
 use crate::pane::PaneSize;
+use crate::project::ProjectInfo;
 use crate::tab::{Tab, TabId};
 
 pub type SessionId = u64;
@@ -16,6 +17,7 @@ pub struct Session {
     previous_tab: Option<usize>,
     next_tab_id: TabId,
     size: PaneSize,
+    project: Option<ProjectInfo>,
 }
 
 impl Session {
@@ -32,6 +34,7 @@ impl Session {
             previous_tab: None,
             next_tab_id: 1,
             size: PaneSize::new(cols, rows),
+            project: None,
         }
     }
 
@@ -56,6 +59,26 @@ impl Session {
     pub fn rename(&mut self, name: impl Into<String>) {
         self.previous_name = Some(self.name.clone());
         self.name = name.into();
+    }
+
+    /// Set the project associated with this session.
+    pub fn set_project(&mut self, project: ProjectInfo) {
+        self.project = Some(project);
+    }
+
+    /// Get the project name, if a project is associated.
+    pub fn project_name(&self) -> Option<&str> {
+        self.project.as_ref().map(|p| p.name.as_str())
+    }
+
+    /// Get the current git branch of the associated project.
+    pub fn git_branch(&self) -> Option<&str> {
+        self.project.as_ref().and_then(|p| p.branch.as_deref())
+    }
+
+    /// Get the associated project info.
+    pub fn project(&self) -> Option<&ProjectInfo> {
+        self.project.as_ref()
     }
 
     /// Add a new tab and make it active.
