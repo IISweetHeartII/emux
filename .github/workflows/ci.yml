@@ -37,7 +37,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Check formatting
-        run: cargo fmt --workspace -- --check
+        run: cargo fmt --all -- --check
 
       - name: Clippy
         run: cargo clippy --workspace -- -D warnings
