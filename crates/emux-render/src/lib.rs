@@ -2,6 +2,7 @@
 
 pub mod cursor;
 pub mod damage;
+pub mod statusbar;
 pub mod text;
 
 use std::io::{self, Write};

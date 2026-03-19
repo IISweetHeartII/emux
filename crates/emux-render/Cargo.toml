@@ -10,3 +10,6 @@ repository.workspace = true
 [dependencies]
 emux-term.workspace = true
 crossterm.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
