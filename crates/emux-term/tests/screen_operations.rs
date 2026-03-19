@@ -403,28 +403,47 @@ fn reverse_index_with_lr_and_tb_margins() {
 /// Forward index inside margins scrolls the margin rect left.
 #[test]
 fn decfi_scroll_left_in_margins() {
-    // DECFI is ESC 9 -- not commonly used; we just verify no crash
+    // DECFI is ESC 9 -- not commonly used
     let mut t = TestTerminal::new(10, 5);
     t.push_str("ABCDEFGHIJ");
-    // No crash is the main assertion
+
+    // Content should have been written successfully
+    assert_eq!(t.cell(0, 0).c, 'A');
+    assert_eq!(t.cell(0, 9).c, 'J');
+    // Cursor should be within bounds after writing full row
+    let (row, col) = t.cursor();
+    assert!(row < 5, "cursor row should be in bounds");
+    assert!(col <= 10, "cursor col should be in bounds");
 }
 
 /// Contour: InsertColumns (DECIC) inside margins
 #[test]
 fn decic_insert_columns_inside_margins() {
-    // DECIC = CSI ' }  -- not commonly used; just verify no crash
+    // DECIC = CSI ' }  -- not commonly used
     let mut t = TestTerminal::new(10, 5);
     t.push_str("ABCDEFGHIJ");
-    // No crash is the main assertion
+
+    // Content should have been written successfully
+    assert_eq!(t.cell(0, 0).c, 'A');
+    assert_eq!(t.cell(0, 9).c, 'J');
+    let (row, col) = t.cursor();
+    assert!(row < 5, "cursor row should be in bounds");
+    assert!(col <= 10, "cursor col should be in bounds");
 }
 
 /// Contour: DeleteColumns (DECDC) inside margins
 #[test]
 fn decdc_delete_columns_inside_margins() {
-    // DECDC = CSI ' ~  -- not commonly used; just verify no crash
+    // DECDC = CSI ' ~  -- not commonly used
     let mut t = TestTerminal::new(10, 5);
     t.push_str("ABCDEFGHIJ");
-    // No crash is the main assertion
+
+    // Content should have been written successfully
+    assert_eq!(t.cell(0, 0).c, 'A');
+    assert_eq!(t.cell(0, 9).c, 'J');
+    let (row, col) = t.cursor();
+    assert!(row < 5, "cursor row should be in bounds");
+    assert!(col <= 10, "cursor col should be in bounds");
 }
 
 /// Contour: InsertCharacters.Margins

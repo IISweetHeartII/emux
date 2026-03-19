@@ -301,8 +301,8 @@ fn clear_search_removes_highlights() {
 
 #[test]
 fn search_performance_large_scrollback() {
-    // Searching through 100,000 lines of scrollback should complete in under
-    // 100ms on a reasonable machine.
+    // Searching through 100,000 lines of scrollback should complete
+    // in a reasonable time (under 2s even on slow CI).
     let mut screen = Screen::new(80, 24);
     // Fill with many lines to create scrollback
     for i in 0..100_000 {
@@ -315,10 +315,17 @@ fn search_performance_large_scrollback() {
     let matches = screen.search_forward("some data", false);
     let elapsed = start.elapsed();
 
-    assert!(!matches.is_empty(), "should find matches");
+    // Every line contains "some data", so we should find many matches.
+    // Some lines may have scrolled out of the scrollback buffer, but
+    // we should still find a substantial number.
     assert!(
-        elapsed.as_millis() < 5000,
-        "search took too long: {:?}",
+        matches.len() > 1000,
+        "expected many matches across scrollback, got {}",
+        matches.len()
+    );
+    assert!(
+        elapsed.as_millis() < 2000,
+        "search through 100k lines took too long: {:?}",
         elapsed
     );
 }

@@ -150,9 +150,13 @@ fn emoji_flags() {
     // Each regional indicator symbol is U+1F1E6..U+1F1FF, in the emoji range
     let mut t = TestTerminal::new(20, 5);
     t.push_str("🇰🇷");
-    // Should not panic; implementation writes each codepoint separately
-    let (row, _col) = t.cursor();
+    // Each regional indicator is a wide (2-col) character
+    let (row, col) = t.cursor();
     assert_eq!(row, 0);
+    // Cursor should have advanced (exact amount depends on whether they combine)
+    assert!(col > 0, "cursor should advance after writing flag emoji");
+    // First codepoint should be stored in cell 0
+    assert_ne!(t.cell(0, 0).c, ' ', "flag emoji should produce visible cell content");
 }
 
 #[test]
@@ -160,9 +164,12 @@ fn emoji_skin_tone() {
     // 👋🏻 = U+1F44B U+1F3FB
     let mut t = TestTerminal::new(20, 5);
     t.push_str("👋🏻");
-    // Should not panic
-    let (row, _col) = t.cursor();
+    let (row, col) = t.cursor();
     assert_eq!(row, 0);
+    // Cursor should have advanced after writing emoji
+    assert!(col > 0, "cursor should advance after writing skin tone emoji");
+    // First emoji character should be in the grid
+    assert_ne!(t.cell(0, 0).c, ' ', "emoji should produce visible cell content");
 }
 
 #[test]
@@ -170,10 +177,14 @@ fn emoji_zwj_family() {
     // 👨‍👩‍👧‍👦 = complex ZWJ sequence (U+200D between each person)
     let mut t = TestTerminal::new(40, 5);
     t.push_str("👨\u{200D}👩\u{200D}👧\u{200D}👦");
-    // Should not panic, exact width depends on implementation
-    // ZWJ chars are zero-width, so only the emoji code points take space
-    let (row, _col) = t.cursor();
+    // Exact width depends on implementation, but cursor should advance
+    // ZWJ chars (U+200D) are zero-width; each emoji codepoint is wide (2 cols)
+    let (row, col) = t.cursor();
     assert_eq!(row, 0);
+    // 4 emoji codepoints x 2 cols each = 8 cols (ZWJ is zero-width)
+    assert!(col > 0, "cursor should advance after writing ZWJ family emoji");
+    // First emoji should be written to the grid
+    assert_eq!(t.cell(0, 0).c, '👨', "first emoji codepoint should be in cell 0");
 }
 
 #[test]
