@@ -16,6 +16,7 @@ Please note that this project has a [Code of Conduct](CODE_OF_CONDUCT.md). By pa
 ```sh
 git clone https://github.com/IISweetHeartII/emux.git
 cd emux
+make setup          # install pre-commit hook (fmt + clippy)
 cargo build --workspace
 ```
 
