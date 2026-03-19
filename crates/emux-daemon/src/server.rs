@@ -1,5 +1,6 @@
 //! Daemon server — listens for client connections and manages sessions.
 
+#[cfg(unix)]
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -13,17 +14,23 @@ use crate::persistence;
 /// A connected client and its stream.
 struct ClientConnection {
     id: ClientId,
+    #[cfg(unix)]
     stream: UnixStream,
+    #[cfg(windows)]
+    stream: std::net::TcpStream,
 }
 
 /// Default auto-save interval in seconds.
 const AUTO_SAVE_INTERVAL_SECS: u64 = 30;
 
-/// The daemon server: owns a session, listens on a Unix socket, and serves
+/// The daemon server: owns a session, listens on a socket, and serves
 /// attached clients.
 pub struct DaemonServer {
     socket_path: PathBuf,
+    #[cfg(unix)]
     listener: UnixListener,
+    #[cfg(windows)]
+    listener: std::net::TcpListener,
     session: Session,
     clients: Vec<ClientConnection>,
     next_client_id: u64,
@@ -36,33 +43,73 @@ pub struct DaemonServer {
 }
 
 impl DaemonServer {
-    /// Start the daemon, binding a Unix socket for the given session name.
+    /// Start the daemon, binding a socket for the given session name.
     ///
-    /// The socket is placed at `<temp_dir>/emux-test-<session_name>`.
+    /// On Unix the socket is a Unix domain socket placed at
+    /// `<temp_dir>/emux-test-<session_name>`.
+    /// On Windows a TCP loopback listener is used instead and the assigned
+    /// port is written to a `.port` file at the same location.
+    ///
     /// If a saved snapshot exists at the default location, the session is
     /// restored from it automatically.
     pub fn start(session_name: &str) -> Result<Self, DaemonError> {
         let socket_path = std::env::temp_dir().join(format!("emux-test-{session_name}"));
 
-        // Clean up stale socket if no process owns it.
-        if socket_path.exists() {
-            // Try connecting to see if it is alive.
-            match std::os::unix::net::UnixStream::connect(&socket_path) {
-                Ok(_) => {
-                    // Something is listening — refuse.
-                    return Err(DaemonError::SocketExists(
-                        socket_path.display().to_string(),
-                    ));
-                }
-                Err(_) => {
-                    // Stale socket; remove it.
-                    let _ = std::fs::remove_file(&socket_path);
+        #[cfg(unix)]
+        {
+            // Clean up stale socket if no process owns it.
+            if socket_path.exists() {
+                // Try connecting to see if it is alive.
+                match std::os::unix::net::UnixStream::connect(&socket_path) {
+                    Ok(_) => {
+                        // Something is listening — refuse.
+                        return Err(DaemonError::SocketExists(
+                            socket_path.display().to_string(),
+                        ));
+                    }
+                    Err(_) => {
+                        // Stale socket; remove it.
+                        let _ = std::fs::remove_file(&socket_path);
+                    }
                 }
             }
         }
 
-        let listener = UnixListener::bind(&socket_path)?;
-        listener.set_nonblocking(true)?;
+        #[cfg(windows)]
+        {
+            // On Windows we use a port file instead of a socket file.
+            if socket_path.exists() {
+                // Try reading the port and connecting to see if a daemon is alive.
+                if let Ok(contents) = std::fs::read_to_string(&socket_path) {
+                    if let Ok(port) = contents.trim().parse::<u16>() {
+                        if std::net::TcpStream::connect(("127.0.0.1", port)).is_ok() {
+                            return Err(DaemonError::SocketExists(
+                                socket_path.display().to_string(),
+                            ));
+                        }
+                    }
+                }
+                // Stale port file; remove it.
+                let _ = std::fs::remove_file(&socket_path);
+            }
+        }
+
+        #[cfg(unix)]
+        let listener = {
+            let l = UnixListener::bind(&socket_path)?;
+            l.set_nonblocking(true)?;
+            l
+        };
+
+        #[cfg(windows)]
+        let listener = {
+            let l = std::net::TcpListener::bind("127.0.0.1:0")?;
+            l.set_nonblocking(true)?;
+            // Write the port to the socket_path file so clients can find us.
+            let port = l.local_addr()?.port();
+            std::fs::write(&socket_path, port.to_string())?;
+            l
+        };
 
         // Try to restore from a saved snapshot; fall back to a fresh session.
         let snapshot_path = persistence::default_snapshot_path(session_name);
@@ -96,7 +143,7 @@ impl DaemonServer {
         Ok(server)
     }
 
-    /// Path to the Unix domain socket.
+    /// Path to the socket (Unix domain socket path, or port file on Windows).
     pub fn socket_path(&self) -> &Path {
         &self.socket_path
     }
@@ -207,6 +254,17 @@ impl DaemonServer {
                     }
                 }
             }
+
+            // Agent / AI team protocol -- stubs until handler implementation.
+            ClientMessage::SplitPane { .. }
+            | ClientMessage::CapturePane { .. }
+            | ClientMessage::SendKeys { .. }
+            | ClientMessage::ListPanes
+            | ClientMessage::GetPaneInfo { .. }
+            | ClientMessage::ResizePane { .. }
+            | ClientMessage::SetPaneTitle { .. } => ServerMessage::Error {
+                message: "not yet implemented".into(),
+            },
         }
     }
 
@@ -249,7 +307,7 @@ impl DaemonServer {
         self.snapshot_path = path;
     }
 
-    /// Get the current snapshot path.
+    /// Get the current persistence snapshot path.
     pub fn snapshot_path(&self) -> Option<&Path> {
         self.snapshot_path.as_deref()
     }
@@ -285,7 +343,22 @@ impl DaemonServer {
     pub fn rename_session(&mut self, new_name: &str) -> Result<(), DaemonError> {
         let new_socket_path =
             std::env::temp_dir().join(format!("emux-test-{new_name}"));
-        std::fs::rename(&self.socket_path, &new_socket_path)?;
+
+        #[cfg(unix)]
+        {
+            std::fs::rename(&self.socket_path, &new_socket_path)?;
+        }
+
+        #[cfg(windows)]
+        {
+            // On Windows the "socket" is a port file. Re-write it at the new
+            // path and remove the old one.
+            if let Ok(contents) = std::fs::read_to_string(&self.socket_path) {
+                std::fs::write(&new_socket_path, &contents)?;
+            }
+            let _ = std::fs::remove_file(&self.socket_path);
+        }
+
         self.session.rename(new_name);
         self.socket_path = new_socket_path;
         self.snapshot_path = persistence::default_snapshot_path(new_name);

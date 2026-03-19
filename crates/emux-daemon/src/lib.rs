@@ -2,6 +2,7 @@
 
 pub mod client;
 pub mod persistence;
+pub mod recording;
 pub mod server;
 
 use std::fmt;
