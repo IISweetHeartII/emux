@@ -4,7 +4,7 @@
 //! Each test creates a fresh parser, feeds bytes via `advance()`, and asserts
 //! that the collected `Action` sequence matches expectation.
 
-use emux_vt::{Action, Parser, Performer};
+use emux_vt::{Action, Intermediates, Parser, Performer};
 
 // ---------------------------------------------------------------------------
 // Test harness
@@ -43,12 +43,21 @@ fn make_params(spec: &str) -> emux_vt::Params {
     p
 }
 
+/// Build an `Intermediates` from a byte slice.
+fn make_intermediates(bytes: &[u8]) -> Intermediates {
+    let mut im = Intermediates::new();
+    for &b in bytes {
+        im.push(b);
+    }
+    im
+}
+
 /// Shorthand: create a CsiDispatch action with the given final byte, params
 /// string, and optional intermediates/leader bytes.
 fn csi(action: u8, param_str: &str, intermediates: &[u8]) -> Action {
     Action::CsiDispatch {
         params: make_params(param_str),
-        intermediates: intermediates.to_vec(),
+        intermediates: make_intermediates(intermediates),
         ignore: false,
         action,
     }
@@ -56,7 +65,7 @@ fn csi(action: u8, param_str: &str, intermediates: &[u8]) -> Action {
 
 fn esc(intermediates: &[u8], byte: u8) -> Action {
     Action::EscDispatch {
-        intermediates: intermediates.to_vec(),
+        intermediates: make_intermediates(intermediates),
         ignore: false,
         byte,
     }
@@ -1188,7 +1197,7 @@ fn csi_multiple_intermediates() {
     } = &actions[0]
     {
         assert_eq!(*action, b'p');
-        assert_eq!(intermediates, &[b' ', b'!']);
+        assert_eq!(intermediates.as_slice(), &[b' ', b'!']);
     } else {
         panic!("expected CsiDispatch");
     }

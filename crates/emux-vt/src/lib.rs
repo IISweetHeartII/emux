@@ -10,7 +10,7 @@ mod osc;
 mod dcs;
 mod charsets;
 
-pub use parser::{Parser, Action, Performer};
+pub use parser::{Parser, Action, Performer, Intermediates};
 pub use params::Params;
 pub use csi::CsiParam;
 pub use osc::OscAction;

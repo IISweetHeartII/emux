@@ -4,44 +4,48 @@
 const MAX_PARAMS: usize = 32;
 
 /// Accumulated parameters from a CSI or DCS sequence.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Params {
-    values: Vec<u16>,
-    current: u32,
-    has_current: bool,
-    trailing_sep: bool,
+    values: [u16; MAX_PARAMS],
     /// Tracks which separators were colons (subparam) vs semicolons.
     /// `subparam_flags[i]` is true if parameter `i+1` was separated from
     /// parameter `i` by a colon (':') rather than a semicolon (';').
-    subparam_flags: Vec<bool>,
+    subparam_flags: [bool; MAX_PARAMS],
+    len: u8,
+    current: u32,
+    has_current: bool,
+    trailing_sep: bool,
     /// Whether the next pushed value is a subparam (colon-separated).
     pending_colon: bool,
 }
 
 impl Params {
     /// Create a new empty parameter accumulator.
+    #[inline]
     pub fn new() -> Self {
         Self {
-            values: Vec::with_capacity(8),
+            values: [0; MAX_PARAMS],
+            subparam_flags: [false; MAX_PARAMS],
+            len: 0,
             current: 0,
             has_current: false,
             trailing_sep: false,
-            subparam_flags: Vec::with_capacity(8),
             pending_colon: false,
         }
     }
 
     /// Reset all accumulated parameters.
+    #[inline]
     pub fn clear(&mut self) {
-        self.values.clear();
+        self.len = 0;
         self.current = 0;
         self.has_current = false;
         self.trailing_sep = false;
-        self.subparam_flags.clear();
         self.pending_colon = false;
     }
 
     /// Feed a single byte (digit or separator) into the accumulator.
+    #[inline]
     pub fn push(&mut self, byte: u8) {
         match byte {
             b'0'..=b'9' => {
@@ -50,14 +54,16 @@ impl Params {
                 self.current = self.current.saturating_mul(10).saturating_add((byte - b'0') as u32);
             }
             b';' => {
-                if self.values.len() < MAX_PARAMS {
+                if (self.len as usize) < MAX_PARAMS {
                     let val = if self.has_current {
                         self.current.min(u16::MAX as u32) as u16
                     } else {
                         0
                     };
-                    self.values.push(val);
-                    self.subparam_flags.push(self.pending_colon);
+                    let idx = self.len as usize;
+                    self.values[idx] = val;
+                    self.subparam_flags[idx] = self.pending_colon;
+                    self.len += 1;
                 }
                 self.current = 0;
                 self.has_current = false;
@@ -66,14 +72,16 @@ impl Params {
             }
             b':' => {
                 // Subparameter separator
-                if self.values.len() < MAX_PARAMS {
+                if (self.len as usize) < MAX_PARAMS {
                     let val = if self.has_current {
                         self.current.min(u16::MAX as u32) as u16
                     } else {
                         0
                     };
-                    self.values.push(val);
-                    self.subparam_flags.push(self.pending_colon);
+                    let idx = self.len as usize;
+                    self.values[idx] = val;
+                    self.subparam_flags[idx] = self.pending_colon;
+                    self.len += 1;
                 }
                 self.current = 0;
                 self.has_current = false;
@@ -85,37 +93,65 @@ impl Params {
 
     /// Finalize and return all parameter values.
     pub fn finished(&self) -> Vec<u16> {
-        let mut result = self.values.clone();
-        if self.has_current && result.len() < MAX_PARAMS {
-            result.push(self.current.min(u16::MAX as u32) as u16);
-        } else if self.trailing_sep && !self.has_current && result.len() < MAX_PARAMS {
-            result.push(0);
+        let mut result = self.values[..self.len as usize].to_vec();
+        if (self.len as usize) < MAX_PARAMS {
+            if self.has_current {
+                result.push(self.current.min(u16::MAX as u32) as u16);
+            } else if self.trailing_sep {
+                result.push(0);
+            }
         }
         result
     }
 
     /// Get parameter at index with a default value.
+    #[inline]
     pub fn get(&self, index: usize, default: u16) -> u16 {
-        let finished = self.finished();
-        finished.get(index).copied().unwrap_or(default)
+        let total = self.finished_len();
+        if index >= total {
+            return default;
+        }
+        if index < self.len as usize {
+            self.values[index]
+        } else {
+            // It's the pending value
+            if self.has_current {
+                self.current.min(u16::MAX as u32) as u16
+            } else {
+                0 // trailing separator default
+            }
+        }
     }
 
     /// Get parameter treating 0 as default (standard CSI behavior).
+    #[inline]
     pub fn get_or(&self, index: usize, default: u16) -> u16 {
         let val = self.get(index, 0);
         if val == 0 { default } else { val }
     }
 
     /// Number of parameters (including the pending one).
+    #[inline]
     pub fn len(&self) -> usize {
-        self.finished().len()
+        self.finished_len()
+    }
+
+    /// Compute the finished length without allocating.
+    #[inline]
+    fn finished_len(&self) -> usize {
+        let base = self.len as usize;
+        if base < MAX_PARAMS && (self.has_current || self.trailing_sep) {
+            base + 1
+        } else {
+            base
+        }
     }
 
     /// Return finished subparam flags. `flags[i]` is true if parameter `i` was
     /// separated from the previous parameter by a colon (`:`) rather than a
     /// semicolon (`;`). The first parameter always has flag `false`.
     pub fn finished_subparam_flags(&self) -> Vec<bool> {
-        let mut result = self.subparam_flags.clone();
+        let mut result = self.subparam_flags[..self.len as usize].to_vec();
         // The pending value needs a flag too
         if self.has_current && result.len() < MAX_PARAMS {
             result.push(self.pending_colon);
@@ -126,8 +162,9 @@ impl Params {
     }
 
     /// Returns true if no parameters have been accumulated.
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.finished_len() == 0
     }
 }
 
