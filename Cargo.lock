@@ -340,6 +340,7 @@ dependencies = [
  "emux-mux",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -357,7 +358,9 @@ version = "0.1.0"
 dependencies = [
  "emux-pty",
  "emux-term",
+ "regex",
  "serde",
+ "tempfile",
  "toml",
 ]
 
@@ -376,6 +379,7 @@ version = "0.1.0"
 dependencies = [
  "crossterm",
  "emux-term",
+ "libc",
 ]
 
 [[package]]

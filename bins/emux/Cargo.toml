@@ -20,8 +20,12 @@ emux-mux.workspace = true
 emux-daemon.workspace = true
 emux-ipc.workspace = true
 crossterm.workspace = true
+
+[target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[target.'cfg(unix)'.dev-dependencies]
+nix = { version = "0.31", features = ["term", "process", "fs"] }
 
 [dev-dependencies]
 emux-pty.workspace = true
-nix = { version = "0.31", features = ["term", "process", "fs"] }

@@ -82,6 +82,9 @@ pub(crate) enum ExitReason {
 }
 
 /// Set a file descriptor to non-blocking mode (Unix only).
+///
+/// On Windows this is not needed: the PTY implementation uses its own
+/// threaded I/O model and does not expose a raw file descriptor.
 #[cfg(unix)]
 pub(crate) fn set_nonblocking(fd: i32) {
     unsafe {
