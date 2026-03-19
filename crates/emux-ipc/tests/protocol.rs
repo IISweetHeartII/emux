@@ -5,7 +5,9 @@
 //! deserialization, and edge-case handling.
 
 use emux_ipc::codec::{self, CodecError};
-use emux_ipc::messages::{ClientMessage, ServerMessage, PROTOCOL_VERSION};
+use emux_ipc::messages::{
+    ClientMessage, PaneEntry, ServerMessage, SplitDirection, PROTOCOL_VERSION,
+};
 use std::io::Cursor;
 
 // ---------------------------------------------------------------------------
@@ -106,6 +108,26 @@ fn roundtrip_preserves_data_identity() {
         ClientMessage::KillPane { pane_id: 7 },
         ClientMessage::FocusPane { pane_id: 3 },
         ClientMessage::Detach,
+        ClientMessage::SplitPane {
+            direction: SplitDirection::Vertical,
+            size: Some(40),
+        },
+        ClientMessage::CapturePane { pane_id: 0 },
+        ClientMessage::SendKeys {
+            pane_id: 1,
+            keys: "hello".into(),
+        },
+        ClientMessage::ListPanes,
+        ClientMessage::GetPaneInfo { pane_id: 2 },
+        ClientMessage::ResizePane {
+            pane_id: 3,
+            cols: 100,
+            rows: 50,
+        },
+        ClientMessage::SetPaneTitle {
+            pane_id: 4,
+            title: "test".into(),
+        },
     ];
     for msg in &client_msgs {
         let mut buf = Vec::new();
@@ -130,6 +152,30 @@ fn roundtrip_preserves_data_identity() {
             message: "bad".into(),
         },
         ServerMessage::Ack,
+        ServerMessage::PaneCaptured {
+            pane_id: 0,
+            content: "captured text".into(),
+        },
+        ServerMessage::PaneList {
+            panes: vec![PaneEntry {
+                id: 0,
+                title: "zsh".into(),
+                cols: 80,
+                rows: 24,
+                active: true,
+                has_notification: false,
+            }],
+        },
+        ServerMessage::PaneInfo {
+            pane: PaneEntry {
+                id: 1,
+                title: "vim".into(),
+                cols: 120,
+                rows: 40,
+                active: false,
+                has_notification: true,
+            },
+        },
     ];
     for msg in &server_msgs {
         let mut buf = Vec::new();
@@ -277,4 +323,282 @@ fn unknown_message_type_returns_error() {
 
     let result2: Result<ServerMessage, CodecError> = codec::decode(bogus_json);
     assert!(result2.is_err());
+}
+
+// ---------------------------------------------------------------------------
+// 5. Agent / AI team protocol messages
+// ---------------------------------------------------------------------------
+
+#[test]
+fn encode_decode_split_direction() {
+    // Verify the SplitDirection enum serializes correctly on its own.
+    let h = SplitDirection::Horizontal;
+    let v = SplitDirection::Vertical;
+    let h_bytes = serde_json::to_vec(&h).unwrap();
+    let v_bytes = serde_json::to_vec(&v).unwrap();
+    let h_decoded: SplitDirection = serde_json::from_slice(&h_bytes).unwrap();
+    let v_decoded: SplitDirection = serde_json::from_slice(&v_bytes).unwrap();
+    assert_eq!(h, h_decoded);
+    assert_eq!(v, v_decoded);
+}
+
+#[test]
+fn encode_decode_pane_entry() {
+    let entry = PaneEntry {
+        id: 7,
+        title: "zsh".into(),
+        cols: 120,
+        rows: 40,
+        active: true,
+        has_notification: false,
+    };
+    let bytes = serde_json::to_vec(&entry).unwrap();
+    let decoded: PaneEntry = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(entry, decoded);
+}
+
+#[test]
+fn encode_decode_split_pane() {
+    let msg = ClientMessage::SplitPane {
+        direction: SplitDirection::Horizontal,
+        size: Some(30),
+    };
+    let bytes = codec::encode(&msg);
+    let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
+    assert_eq!(msg, decoded);
+
+    // Without size
+    let msg2 = ClientMessage::SplitPane {
+        direction: SplitDirection::Vertical,
+        size: None,
+    };
+    let bytes2 = codec::encode(&msg2);
+    let decoded2: ClientMessage = codec::decode(&bytes2[4..]).unwrap();
+    assert_eq!(msg2, decoded2);
+}
+
+#[test]
+fn encode_decode_capture_pane() {
+    let msg = ClientMessage::CapturePane { pane_id: 5 };
+    let bytes = codec::encode(&msg);
+    let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
+    assert_eq!(msg, decoded);
+}
+
+#[test]
+fn encode_decode_send_keys() {
+    let msg = ClientMessage::SendKeys {
+        pane_id: 2,
+        keys: "ls -la\n".into(),
+    };
+    let bytes = codec::encode(&msg);
+    let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
+    assert_eq!(msg, decoded);
+}
+
+#[test]
+fn encode_decode_list_panes() {
+    let msg = ClientMessage::ListPanes;
+    let bytes = codec::encode(&msg);
+    let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
+    assert_eq!(msg, decoded);
+}
+
+#[test]
+fn encode_decode_get_pane_info() {
+    let msg = ClientMessage::GetPaneInfo { pane_id: 42 };
+    let bytes = codec::encode(&msg);
+    let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
+    assert_eq!(msg, decoded);
+}
+
+#[test]
+fn encode_decode_resize_pane() {
+    let msg = ClientMessage::ResizePane {
+        pane_id: 1,
+        cols: 100,
+        rows: 50,
+    };
+    let bytes = codec::encode(&msg);
+    let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
+    assert_eq!(msg, decoded);
+}
+
+#[test]
+fn encode_decode_set_pane_title() {
+    let msg = ClientMessage::SetPaneTitle {
+        pane_id: 3,
+        title: "agent-worker-1".into(),
+    };
+    let bytes = codec::encode(&msg);
+    let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
+    assert_eq!(msg, decoded);
+}
+
+#[test]
+fn encode_decode_pane_captured() {
+    let msg = ServerMessage::PaneCaptured {
+        pane_id: 5,
+        content: "$ echo hello\nhello\n$ ".into(),
+    };
+    let bytes = codec::encode(&msg);
+    let decoded: ServerMessage = codec::decode(&bytes[4..]).unwrap();
+    assert_eq!(msg, decoded);
+}
+
+#[test]
+fn encode_decode_pane_list() {
+    let msg = ServerMessage::PaneList {
+        panes: vec![
+            PaneEntry {
+                id: 0,
+                title: "main".into(),
+                cols: 80,
+                rows: 24,
+                active: true,
+                has_notification: false,
+            },
+            PaneEntry {
+                id: 1,
+                title: "worker".into(),
+                cols: 80,
+                rows: 24,
+                active: false,
+                has_notification: true,
+            },
+        ],
+    };
+    let bytes = codec::encode(&msg);
+    let decoded: ServerMessage = codec::decode(&bytes[4..]).unwrap();
+    assert_eq!(msg, decoded);
+}
+
+#[test]
+fn encode_decode_pane_list_empty() {
+    let msg = ServerMessage::PaneList { panes: vec![] };
+    let bytes = codec::encode(&msg);
+    let decoded: ServerMessage = codec::decode(&bytes[4..]).unwrap();
+    assert_eq!(msg, decoded);
+}
+
+#[test]
+fn encode_decode_pane_info() {
+    let msg = ServerMessage::PaneInfo {
+        pane: PaneEntry {
+            id: 10,
+            title: "vim".into(),
+            cols: 160,
+            rows: 48,
+            active: false,
+            has_notification: false,
+        },
+    };
+    let bytes = codec::encode(&msg);
+    let decoded: ServerMessage = codec::decode(&bytes[4..]).unwrap();
+    assert_eq!(msg, decoded);
+}
+
+#[test]
+fn roundtrip_agent_messages_via_stream() {
+    // Test all new message types through write_message / read_message (stream codec).
+    let client_msgs: Vec<ClientMessage> = vec![
+        ClientMessage::SplitPane {
+            direction: SplitDirection::Horizontal,
+            size: Some(50),
+        },
+        ClientMessage::SplitPane {
+            direction: SplitDirection::Vertical,
+            size: None,
+        },
+        ClientMessage::CapturePane { pane_id: 0 },
+        ClientMessage::SendKeys {
+            pane_id: 1,
+            keys: "exit\n".into(),
+        },
+        ClientMessage::ListPanes,
+        ClientMessage::GetPaneInfo { pane_id: 3 },
+        ClientMessage::ResizePane {
+            pane_id: 2,
+            cols: 200,
+            rows: 60,
+        },
+        ClientMessage::SetPaneTitle {
+            pane_id: 4,
+            title: "build".into(),
+        },
+    ];
+
+    let mut buf = Vec::new();
+    for msg in &client_msgs {
+        codec::write_message(&mut buf, msg).unwrap();
+    }
+    let mut cursor = Cursor::new(&buf);
+    for expected in &client_msgs {
+        let decoded: ClientMessage = codec::read_message(&mut cursor).unwrap();
+        assert_eq!(expected, &decoded);
+    }
+
+    let server_msgs: Vec<ServerMessage> = vec![
+        ServerMessage::PaneCaptured {
+            pane_id: 0,
+            content: "output".into(),
+        },
+        ServerMessage::PaneList {
+            panes: vec![PaneEntry {
+                id: 0,
+                title: "sh".into(),
+                cols: 80,
+                rows: 24,
+                active: true,
+                has_notification: false,
+            }],
+        },
+        ServerMessage::PaneInfo {
+            pane: PaneEntry {
+                id: 3,
+                title: "htop".into(),
+                cols: 120,
+                rows: 40,
+                active: false,
+                has_notification: true,
+            },
+        },
+    ];
+
+    let mut buf2 = Vec::new();
+    for msg in &server_msgs {
+        codec::write_message(&mut buf2, msg).unwrap();
+    }
+    let mut cursor2 = Cursor::new(&buf2);
+    for expected in &server_msgs {
+        let decoded: ServerMessage = codec::read_message(&mut cursor2).unwrap();
+        assert_eq!(expected, &decoded);
+    }
+}
+
+#[test]
+fn send_keys_with_special_characters() {
+    // Verify escape sequences and control characters survive roundtrip.
+    let msg = ClientMessage::SendKeys {
+        pane_id: 0,
+        keys: "\x1b[A\x1b[B\x03\r\n".into(), // arrow up, arrow down, ctrl-c, enter
+    };
+    let bytes = codec::encode(&msg);
+    let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
+    assert_eq!(msg, decoded);
+}
+
+#[test]
+fn capture_pane_large_content() {
+    // A full 80x24 terminal worth of text.
+    let content = "X".repeat(80 * 24);
+    let msg = ServerMessage::PaneCaptured {
+        pane_id: 1,
+        content: content.clone(),
+    };
+    let mut buf = Vec::new();
+    codec::write_message(&mut buf, &msg).unwrap();
+    let mut cursor = Cursor::new(&buf);
+    let decoded: ServerMessage = codec::read_message(&mut cursor).unwrap();
+    assert_eq!(msg, decoded);
 }
