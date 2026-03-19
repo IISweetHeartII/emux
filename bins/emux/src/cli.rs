@@ -16,7 +16,8 @@ pub(crate) fn print_help() {
     println!("  kill <name>      Kill a session");
     println!("  ssh <dest> [cmd] Connect to a remote emux session via SSH");
     println!("                   dest: [user@]host[:port]");
-    println!("                   cmd:  new [name] | attach [name] | list\n");
+    println!("                   cmd:  new [name] | attach [name] | list");
+    println!("  upgrade          Update emux to the latest version\n");
     println!("Options:");
     println!("  -h, --help       Show this help message");
     println!("  -V, --version    Show version");

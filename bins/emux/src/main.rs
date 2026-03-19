@@ -11,12 +11,14 @@ mod input;
 mod keybindings;
 mod operations;
 mod render;
+mod upgrade;
 
 pub use error::AppError;
 
 use cli::{cmd_attach, cmd_default, cmd_kill, cmd_list, cmd_new, cmd_ssh, generate_session_name, print_help};
 use daemon::list_live_sessions;
 use logging::init_logging;
+use upgrade::{cmd_upgrade, check_update_notice};
 
 fn main() -> Result<(), AppError> {
     init_logging();
@@ -26,10 +28,13 @@ fn main() -> Result<(), AppError> {
 
     // Detect nested sessions (like tmux's $TMUX check).
     // Allow `emux ls`, `emux kill`, etc. but block new sessions.
+    // Check for updates (non-blocking, once per day).
+    check_update_notice();
+
     if std::env::var("EMUX").is_ok() {
         let cmd = args.get(1).map(|s| s.as_str()).unwrap_or("");
         match cmd {
-            "list" | "ls" | "l" | "kill" | "ssh" | "--help" | "-h" | "--version" | "-V" => {
+            "list" | "ls" | "l" | "kill" | "ssh" | "upgrade" | "--help" | "-h" | "--version" | "-V" => {
                 // These are safe inside emux — allow them.
             }
             _ => {
@@ -83,6 +88,9 @@ fn main() -> Result<(), AppError> {
             }
             "ssh" => {
                 return cmd_ssh(&args[2..]);
+            }
+            "upgrade" | "update" => {
+                return cmd_upgrade();
             }
             other if other.starts_with('-') => {
                 eprintln!("emux: unknown option '{}'. Try 'emux --help'.", other);
