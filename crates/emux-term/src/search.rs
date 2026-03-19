@@ -54,11 +54,7 @@ impl std::error::Error for SearchError {}
 ///
 /// Each entry in `texts` corresponds to one row (index = absolute row number).
 /// Returns matches sorted by row then column.
-pub fn find_all_matches(
-    texts: &[String],
-    query: &str,
-    case_sensitive: bool,
-) -> Vec<SearchMatch> {
+pub fn find_all_matches(texts: &[String], query: &str, case_sensitive: bool) -> Vec<SearchMatch> {
     let mut matches = Vec::new();
     if query.is_empty() {
         return matches;
@@ -104,8 +100,8 @@ pub fn find_all_matches_regex(
     } else {
         format!("(?i){pattern}")
     };
-    let re = regex::Regex::new(&full_pattern)
-        .map_err(|e| SearchError::InvalidRegex(e.to_string()))?;
+    let re =
+        regex::Regex::new(&full_pattern).map_err(|e| SearchError::InvalidRegex(e.to_string()))?;
 
     let mut matches = Vec::new();
     for (row_idx, text) in texts.iter().enumerate() {
@@ -167,9 +163,30 @@ mod tests {
         let matches = find_all_matches(&texts, "Hello", true);
         // "Hello" appears in row 0 col 0, row 3 col 0, row 3 col 6
         assert_eq!(matches.len(), 3);
-        assert_eq!(matches[0], SearchMatch { row: 0, col: 0, len: 5 });
-        assert_eq!(matches[1], SearchMatch { row: 3, col: 0, len: 5 });
-        assert_eq!(matches[2], SearchMatch { row: 3, col: 6, len: 5 });
+        assert_eq!(
+            matches[0],
+            SearchMatch {
+                row: 0,
+                col: 0,
+                len: 5
+            }
+        );
+        assert_eq!(
+            matches[1],
+            SearchMatch {
+                row: 3,
+                col: 0,
+                len: 5
+            }
+        );
+        assert_eq!(
+            matches[2],
+            SearchMatch {
+                row: 3,
+                col: 6,
+                len: 5
+            }
+        );
     }
 
     #[test]
@@ -250,8 +267,22 @@ mod tests {
         ];
         let matches = find_all_matches_regex(&texts, r"\d+", true).unwrap();
         assert_eq!(matches.len(), 2);
-        assert_eq!(matches[0], SearchMatch { row: 0, col: 5, len: 2 });
-        assert_eq!(matches[1], SearchMatch { row: 2, col: 5, len: 4 });
+        assert_eq!(
+            matches[0],
+            SearchMatch {
+                row: 0,
+                col: 5,
+                len: 2
+            }
+        );
+        assert_eq!(
+            matches[1],
+            SearchMatch {
+                row: 2,
+                col: 5,
+                len: 4
+            }
+        );
     }
 
     // ── Navigation ──────────────────────────────────────────────────
@@ -288,9 +319,21 @@ mod tests {
 
     #[test]
     fn search_match_equality() {
-        let a = SearchMatch { row: 1, col: 2, len: 3 };
-        let b = SearchMatch { row: 1, col: 2, len: 3 };
-        let c = SearchMatch { row: 1, col: 2, len: 4 };
+        let a = SearchMatch {
+            row: 1,
+            col: 2,
+            len: 3,
+        };
+        let b = SearchMatch {
+            row: 1,
+            col: 2,
+            len: 3,
+        };
+        let c = SearchMatch {
+            row: 1,
+            col: 2,
+            len: 4,
+        };
         assert_eq!(a, b);
         assert_ne!(a, c);
     }

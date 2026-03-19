@@ -1,5 +1,5 @@
-use emux_vt::Parser;
 use emux_term::{Screen, grid::Cell};
+use emux_vt::Parser;
 
 pub struct TestTerminal {
     pub screen: Screen,
@@ -39,11 +39,23 @@ impl TestTerminal {
     }
 
     pub fn assert_cell_char(&self, row: usize, col: usize, expected: char) {
-        assert_eq!(self.cell(row, col).c, expected, "cell ({},{}) char", row, col);
+        assert_eq!(
+            self.cell(row, col).c,
+            expected,
+            "cell ({},{}) char",
+            row,
+            col
+        );
     }
 
     pub fn assert_cell_width(&self, row: usize, col: usize, expected: u8) {
-        assert_eq!(self.cell(row, col).width, expected, "cell ({},{}) width", row, col);
+        assert_eq!(
+            self.cell(row, col).width,
+            expected,
+            "cell ({},{}) width",
+            row,
+            col
+        );
     }
 
     pub fn assert_row_text(&self, row: usize, expected: &str) {

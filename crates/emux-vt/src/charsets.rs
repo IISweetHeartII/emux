@@ -40,4 +40,3 @@ fn dec_special_graphics(byte: u8) -> char {
         _ => byte as char,
     }
 }
-

@@ -190,8 +190,7 @@ impl Transport {
                     .file_stem()
                     .and_then(|s| s.to_str())
                     .unwrap_or("0");
-                let stream =
-                    SshStream::spawn(host, user.as_deref(), *port, session)?;
+                let stream = SshStream::spawn(host, user.as_deref(), *port, session)?;
                 Ok(Box::new(stream))
             }
         }

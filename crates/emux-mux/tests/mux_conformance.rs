@@ -149,10 +149,12 @@ fn cannot_split_vertically_when_pane_has_fixed_columns() {
     // Zellij: "cannot_split_panes_vertically_when_active_pane_has_fixed_columns"
     let mut tab = Tab::new(0, "test", 80, 24);
     let active = tab.active_pane_id().unwrap();
-    tab.pane_mut(active).unwrap().set_constraints(PaneConstraints {
-        fixed_rows: None,
-        fixed_cols: Some(80),
-    });
+    tab.pane_mut(active)
+        .unwrap()
+        .set_constraints(PaneConstraints {
+            fixed_rows: None,
+            fixed_cols: Some(80),
+        });
 
     // Vertical split should be refused because columns are fixed.
     let result = tab.split_pane(SplitDirection::Vertical);
@@ -165,10 +167,12 @@ fn cannot_split_horizontally_when_pane_has_fixed_rows() {
     // Zellij: "cannot_split_panes_horizontally_when_active_pane_has_fixed_rows"
     let mut tab = Tab::new(0, "test", 80, 24);
     let active = tab.active_pane_id().unwrap();
-    tab.pane_mut(active).unwrap().set_constraints(PaneConstraints {
-        fixed_rows: Some(24),
-        fixed_cols: None,
-    });
+    tab.pane_mut(active)
+        .unwrap()
+        .set_constraints(PaneConstraints {
+            fixed_rows: Some(24),
+            fixed_cols: None,
+        });
 
     // Horizontal split should be refused because rows are fixed.
     let result = tab.split_pane(SplitDirection::Horizontal);
@@ -418,7 +422,9 @@ fn move_focus_left_at_left_edge_changes_tab() {
     session.new_tab("Tab 2");
     session.switch_tab(1);
     // The active pane is at the left edge, trying to go left should fail at tab level
-    let moved = session.active_tab_mut().focus_direction(FocusDirection::Left);
+    let moved = session
+        .active_tab_mut()
+        .focus_direction(FocusDirection::Left);
     assert!(!moved); // at edge
     // Caller would then call prev_tab
     session.prev_tab();
@@ -431,7 +437,9 @@ fn move_focus_right_at_right_edge_changes_tab() {
     let mut session = Session::new("test", 80, 24);
     session.new_tab("Tab 2");
     session.switch_tab(0);
-    let moved = session.active_tab_mut().focus_direction(FocusDirection::Right);
+    let moved = session
+        .active_tab_mut()
+        .focus_direction(FocusDirection::Right);
     assert!(!moved); // at edge
     session.next_tab();
     assert_eq!(session.active_tab_index(), 1);
@@ -449,12 +457,22 @@ fn resize_down_with_pane_above() {
     let _bottom = tab.split_pane(SplitDirection::Horizontal).unwrap();
     // Focus top pane and resize down (grow it)
     tab.focus_pane(top);
-    let top_rows_before = tab.compute_positions().iter()
-        .find(|(id, _)| *id == top).unwrap().1.rows;
+    let top_rows_before = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == top)
+        .unwrap()
+        .1
+        .rows;
     let resized = tab.resize_pane(top, ResizeDirection::Down, 2);
     assert!(resized);
-    let top_rows_after = tab.compute_positions().iter()
-        .find(|(id, _)| *id == top).unwrap().1.rows;
+    let top_rows_after = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == top)
+        .unwrap()
+        .1
+        .rows;
     assert!(top_rows_after > top_rows_before);
 }
 
@@ -466,12 +484,22 @@ fn resize_down_with_pane_below() {
     let bottom = tab.split_pane(SplitDirection::Horizontal).unwrap();
     // Focus bottom pane and resize down (grow it)
     tab.focus_pane(bottom);
-    let bottom_rows_before = tab.compute_positions().iter()
-        .find(|(id, _)| *id == bottom).unwrap().1.rows;
+    let bottom_rows_before = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == bottom)
+        .unwrap()
+        .1
+        .rows;
     let resized = tab.resize_pane(bottom, ResizeDirection::Down, 2);
     assert!(resized);
-    let bottom_rows_after = tab.compute_positions().iter()
-        .find(|(id, _)| *id == bottom).unwrap().1.rows;
+    let bottom_rows_after = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == bottom)
+        .unwrap()
+        .1
+        .rows;
     assert!(bottom_rows_after > bottom_rows_before);
 }
 
@@ -482,12 +510,22 @@ fn resize_up_with_pane_above() {
     let top = tab.active_pane_id().unwrap();
     let bottom = tab.split_pane(SplitDirection::Horizontal).unwrap();
     tab.focus_pane(bottom);
-    let bottom_rows_before = tab.compute_positions().iter()
-        .find(|(id, _)| *id == bottom).unwrap().1.rows;
+    let bottom_rows_before = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == bottom)
+        .unwrap()
+        .1
+        .rows;
     let resized = tab.resize_pane(bottom, ResizeDirection::Up, 2);
     assert!(resized);
-    let bottom_rows_after = tab.compute_positions().iter()
-        .find(|(id, _)| *id == bottom).unwrap().1.rows;
+    let bottom_rows_after = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == bottom)
+        .unwrap()
+        .1
+        .rows;
     assert!(bottom_rows_after > bottom_rows_before);
 }
 
@@ -498,12 +536,22 @@ fn resize_left_with_pane_to_the_left() {
     let left = tab.active_pane_id().unwrap();
     let right = tab.split_pane(SplitDirection::Vertical).unwrap();
     tab.focus_pane(right);
-    let right_cols_before = tab.compute_positions().iter()
-        .find(|(id, _)| *id == right).unwrap().1.cols;
+    let right_cols_before = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == right)
+        .unwrap()
+        .1
+        .cols;
     let resized = tab.resize_pane(right, ResizeDirection::Left, 4);
     assert!(resized);
-    let right_cols_after = tab.compute_positions().iter()
-        .find(|(id, _)| *id == right).unwrap().1.cols;
+    let right_cols_after = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == right)
+        .unwrap()
+        .1
+        .cols;
     assert!(right_cols_after > right_cols_before);
 }
 
@@ -514,12 +562,22 @@ fn resize_right_with_pane_to_the_right() {
     let left = tab.active_pane_id().unwrap();
     let _right = tab.split_pane(SplitDirection::Vertical).unwrap();
     tab.focus_pane(left);
-    let left_cols_before = tab.compute_positions().iter()
-        .find(|(id, _)| *id == left).unwrap().1.cols;
+    let left_cols_before = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == left)
+        .unwrap()
+        .1
+        .cols;
     let resized = tab.resize_pane(left, ResizeDirection::Right, 4);
     assert!(resized);
-    let left_cols_after = tab.compute_positions().iter()
-        .find(|(id, _)| *id == left).unwrap().1.cols;
+    let left_cols_after = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == left)
+        .unwrap()
+        .1
+        .cols;
     assert!(left_cols_after > left_cols_before);
 }
 
@@ -532,7 +590,12 @@ fn cannot_resize_down_when_pane_below_at_minimum_height() {
     let _bottom = tab.split_pane(SplitDirection::Horizontal).unwrap();
     // Each pane is 2 rows (minimum). Resize should hit the 0.9 ratio clamp.
     let positions_before = tab.compute_positions();
-    let top_rows = positions_before.iter().find(|(id, _)| *id == top).unwrap().1.rows;
+    let top_rows = positions_before
+        .iter()
+        .find(|(id, _)| *id == top)
+        .unwrap()
+        .1
+        .rows;
     // Try to resize — the ratio clamp prevents going beyond 0.9
     tab.resize_pane(top, ResizeDirection::Down, 10);
     let positions_after = tab.compute_positions();
@@ -582,10 +645,12 @@ fn cannot_resize_when_pane_has_fixed_columns() {
     tab.split_pane(SplitDirection::Vertical).unwrap();
 
     // Set fixed cols on the left pane
-    tab.pane_mut(left).unwrap().set_constraints(PaneConstraints {
-        fixed_rows: None,
-        fixed_cols: Some(40),
-    });
+    tab.pane_mut(left)
+        .unwrap()
+        .set_constraints(PaneConstraints {
+            fixed_rows: None,
+            fixed_cols: Some(40),
+        });
 
     // Trying to resize the constrained pane horizontally should fail
     let result = tab.resize_pane(left, ResizeDirection::Right, 5);
@@ -609,13 +674,23 @@ fn nondirectional_resize_increase_with_pane_to_left() {
     let left = tab.active_pane_id().unwrap();
     let right = tab.split_pane(SplitDirection::Vertical).unwrap();
     tab.focus_pane(right);
-    let right_cols_before = tab.compute_positions().iter()
-        .find(|(id, _)| *id == right).unwrap().1.cols;
+    let right_cols_before = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == right)
+        .unwrap()
+        .1
+        .cols;
     // Increase right pane by growing left (decreasing ratio)
     let resized = tab.resize_pane(right, ResizeDirection::Left, 4);
     assert!(resized);
-    let right_cols_after = tab.compute_positions().iter()
-        .find(|(id, _)| *id == right).unwrap().1.cols;
+    let right_cols_after = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == right)
+        .unwrap()
+        .1
+        .cols;
     assert!(right_cols_after > right_cols_before);
 }
 
@@ -625,13 +700,23 @@ fn resize_by_pane_id() {
     let mut tab = Tab::new(0, "test", 80, 24);
     let left = tab.active_pane_id().unwrap();
     let right = tab.split_pane(SplitDirection::Vertical).unwrap();
-    let left_cols_before = tab.compute_positions().iter()
-        .find(|(id, _)| *id == left).unwrap().1.cols;
+    let left_cols_before = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == left)
+        .unwrap()
+        .1
+        .cols;
     // Resize a specific pane by ID (not necessarily the active one)
     let resized = tab.resize_pane(left, ResizeDirection::Right, 4);
     assert!(resized);
-    let left_cols_after = tab.compute_positions().iter()
-        .find(|(id, _)| *id == left).unwrap().1.cols;
+    let left_cols_after = tab
+        .compute_positions()
+        .iter()
+        .find(|(id, _)| *id == left)
+        .unwrap()
+        .1
+        .cols;
     assert!(left_cols_after > left_cols_before);
 }
 
@@ -865,7 +950,15 @@ fn toggle_focused_pane_fullscreen() {
     let positions = tab.compute_positions();
     assert_eq!(positions.len(), 1);
     assert_eq!(positions[0].0, active);
-    assert_eq!(positions[0].1, PanePosition { col: 0, row: 0, cols: 80, rows: 24 });
+    assert_eq!(
+        positions[0].1,
+        PanePosition {
+            col: 0,
+            row: 0,
+            cols: 80,
+            rows: 24
+        }
+    );
 }
 
 #[test]
@@ -941,7 +1034,15 @@ fn stacked_panes_can_become_fullscreen() {
     assert!(tab.is_fullscreen());
     let positions = tab.compute_positions();
     assert_eq!(positions.len(), 1);
-    assert_eq!(positions[0].1, PanePosition { col: 0, row: 0, cols: 80, rows: 24 });
+    assert_eq!(
+        positions[0].1,
+        PanePosition {
+            col: 0,
+            row: 0,
+            cols: 80,
+            rows: 24
+        }
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1157,7 +1258,9 @@ fn tab_id_remains_stable_after_switch() {
 fn switch_to_tab_with_fullscreen_pane() {
     // Zellij: "switch_to_tab_with_fullscreen"
     let mut session = Session::new("test", 80, 24);
-    session.active_tab_mut().split_pane(SplitDirection::Vertical);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical);
     session.active_tab_mut().toggle_fullscreen();
     assert!(session.active_tab().is_fullscreen());
 
@@ -1189,7 +1292,10 @@ fn close_tab_by_id() {
 fn break_pane_to_new_tab() {
     // Zellij: "screen_can_break_pane_to_a_new_tab"
     let mut session = Session::new("test", 80, 24);
-    let pane2 = session.active_tab_mut().split_pane(SplitDirection::Vertical).unwrap();
+    let pane2 = session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical)
+        .unwrap();
     assert_eq!(session.active_tab().pane_count(), 2);
     let new_tab_id = session.break_pane_to_new_tab(pane2);
     assert!(new_tab_id.is_some());
@@ -1215,7 +1321,9 @@ fn cannot_break_last_pane_to_new_tab() {
 fn move_pane_to_new_tab_right() {
     // Zellij: "screen_can_move_pane_to_a_new_tab_right"
     let mut session = Session::new("test", 80, 24);
-    session.active_tab_mut().split_pane(SplitDirection::Vertical);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical);
     assert_eq!(session.active_tab().pane_count(), 2);
     let result = session.move_pane_to_new_tab_right();
     assert!(result.is_some());
@@ -1252,7 +1360,9 @@ fn attach_to_existing_session() {
 fn detach_from_session() {
     // Session state persists independently of client attachment.
     let mut session = Session::new("test", 80, 24);
-    session.active_tab_mut().split_pane(SplitDirection::Vertical);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical);
     // "Detach" is a no-op at the mux layer; session state is preserved.
     assert_eq!(session.active_tab().pane_count(), 2);
     assert_eq!(session.name(), "test");
@@ -1262,7 +1372,9 @@ fn detach_from_session() {
 fn multiple_clients_in_session() {
     // Multiple clients share the same session state.
     let mut session = Session::new("test", 80, 24);
-    session.active_tab_mut().split_pane(SplitDirection::Vertical);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical);
     // Both "clients" see the same pane count
     assert_eq!(session.active_tab().pane_count(), 2);
     // Resize from one client affects all
@@ -1276,7 +1388,9 @@ fn session_survives_client_disconnect() {
     // Session state is not lost when client disconnects.
     let mut session = Session::new("test", 80, 24);
     session.new_tab("Tab 2");
-    session.active_tab_mut().split_pane(SplitDirection::Horizontal);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Horizontal);
     // "Client disconnects" — session should still be intact.
     assert_eq!(session.tab_count(), 2);
     assert_eq!(session.active_tab().pane_count(), 2);
@@ -1514,7 +1628,8 @@ fn correctly_resize_frameless_panes_on_close() {
     assert_eq!(tab.pane_count(), 2);
     let positions = tab.compute_positions();
     // Total cols should still be 80
-    let total_cols: usize = positions.iter()
+    let total_cols: usize = positions
+        .iter()
         .filter(|(_, p)| p.row == 0)
         .map(|(_, p)| p.cols)
         .sum();
@@ -1786,9 +1901,13 @@ fn scroll_to_bottom_by_pane_id() {
 #[test]
 fn session_resize_propagates_to_all_tabs() {
     let mut session = Session::new("test", 80, 24);
-    session.active_tab_mut().split_pane(SplitDirection::Vertical);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical);
     session.new_tab("Tab 2");
-    session.active_tab_mut().split_pane(SplitDirection::Horizontal);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Horizontal);
 
     session.resize(120, 40);
 
@@ -1839,7 +1958,15 @@ fn split_then_close_returns_to_single_pane() {
 
     let positions = tab.compute_positions();
     assert_eq!(positions.len(), 1);
-    assert_eq!(positions[0].1, PanePosition { col: 0, row: 0, cols: 80, rows: 24 });
+    assert_eq!(
+        positions[0].1,
+        PanePosition {
+            col: 0,
+            row: 0,
+            cols: 80,
+            rows: 24
+        }
+    );
 }
 
 #[test]

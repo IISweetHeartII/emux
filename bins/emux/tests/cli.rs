@@ -428,10 +428,7 @@ fn ssh_with_invalid_destination_exits_nonzero() {
         .output()
         .expect("failed to execute emux ssh @badhost");
 
-    assert!(
-        !output.status.success(),
-        "emux ssh @badhost should fail"
-    );
+    assert!(!output.status.success(), "emux ssh @badhost should fail");
 }
 
 #[test]
@@ -441,8 +438,5 @@ fn ssh_with_unknown_subcommand_exits_nonzero() {
         .output()
         .expect("failed to execute emux ssh host bogus");
 
-    assert!(
-        !output.status.success(),
-        "emux ssh host bogus should fail"
-    );
+    assert!(!output.status.success(), "emux ssh host bogus should fail");
 }

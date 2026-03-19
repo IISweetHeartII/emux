@@ -490,7 +490,11 @@ impl Parser {
         match byte {
             0x07 | 0x9c => {
                 // BEL or ST (8-bit) terminates OSC
-                let parts = self.osc_data.split(|&b| b == b';').map(<[u8]>::to_vec).collect();
+                let parts = self
+                    .osc_data
+                    .split(|&b| b == b';')
+                    .map(<[u8]>::to_vec)
+                    .collect();
                 performer.perform(Action::OscDispatch(parts));
                 self.state = State::Ground;
             }
@@ -711,7 +715,10 @@ mod tests {
         match &c.0[0] {
             Action::OscDispatch(parts) => {
                 let total: usize = parts.iter().map(|p| p.len()).sum();
-                assert!(total <= MAX_OSC_DATA, "OSC data should be truncated to {MAX_OSC_DATA}, got {total}");
+                assert!(
+                    total <= MAX_OSC_DATA,
+                    "OSC data should be truncated to {MAX_OSC_DATA}, got {total}"
+                );
             }
             other => panic!("expected OscDispatch, got {:?}", other),
         }

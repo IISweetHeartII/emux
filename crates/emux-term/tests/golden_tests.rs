@@ -17,8 +17,7 @@ use serde_json::Value;
 
 /// Directory containing all golden ref test data.
 fn ref_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/golden/ref")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/ref")
 }
 
 /// Size descriptor from `size.json`.
@@ -49,10 +48,7 @@ fn read_config(dir: &Path) -> RefConfig {
         .unwrap_or_else(|e| panic!("Failed to read config.json in {}: {e}", dir.display()));
     let v: Value = serde_json::from_str(&data).unwrap();
     RefConfig {
-        history_size: v
-            .get("history_size")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as usize,
+        history_size: v.get("history_size").and_then(|v| v.as_u64()).unwrap_or(0) as usize,
     }
 }
 
@@ -66,8 +62,8 @@ fn read_config(dir: &Path) -> RefConfig {
 ///   `[bold]`, `[italic]`, `[fg:N]`, `[bg:N]`, `[fg:r,g,b]`, `[underline]`, etc.
 /// This keeps the snapshot human-readable while capturing attribute state.
 fn render_grid(screen: &Screen) -> String {
-    use emux_term::{Color, CellAttrs};
     use emux_term::grid::UnderlineStyle;
+    use emux_term::{CellAttrs, Color};
 
     let mut lines = Vec::with_capacity(screen.rows());
     for row_idx in 0..screen.rows() {

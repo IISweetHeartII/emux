@@ -22,7 +22,10 @@ fn list_shows_no_active_sessions_when_none_running() {
         for entry in entries.flatten() {
             let path = entry.path();
             if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
-                if let Some(session) = name.strip_prefix("emux-").and_then(|s| s.strip_suffix(".sock")) {
+                if let Some(session) = name
+                    .strip_prefix("emux-")
+                    .and_then(|s| s.strip_suffix(".sock"))
+                {
                     let _ = Command::new(emux_bin()).args(["kill", session]).output();
                 }
             }
@@ -60,10 +63,7 @@ fn list_long_form_works() {
     assert!(output.status.success(), "exit code should be 0");
     let stdout = String::from_utf8_lossy(&output.stdout);
     // Either "No active sessions" or a list of sessions — both are valid.
-    assert!(
-        !stdout.is_empty(),
-        "list output should not be empty"
-    );
+    assert!(!stdout.is_empty(), "list output should not be empty");
 }
 
 // ---------------------------------------------------------------------------
@@ -280,9 +280,7 @@ fn new_list_kill_lifecycle() {
             break;
         }
         if attempt == 4 {
-            panic!(
-                "session should appear in ls output after 5 attempts, got: {ls_stdout}"
-            );
+            panic!("session should appear in ls output after 5 attempts, got: {ls_stdout}");
         }
     }
     assert!(found);

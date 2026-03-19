@@ -6,11 +6,25 @@
 
 use emux_term::input::*;
 
-fn no_mods() -> Modifiers { Modifiers::none() }
-fn ctrl() -> Modifiers { Modifiers::ctrl() }
-fn alt() -> Modifiers { Modifiers::alt() }
-fn shift() -> Modifiers { Modifiers::shift() }
-fn ctrl_alt() -> Modifiers { Modifiers { ctrl: true, alt: true, ..Default::default() } }
+fn no_mods() -> Modifiers {
+    Modifiers::none()
+}
+fn ctrl() -> Modifiers {
+    Modifiers::ctrl()
+}
+fn alt() -> Modifiers {
+    Modifiers::alt()
+}
+fn shift() -> Modifiers {
+    Modifiers::shift()
+}
+fn ctrl_alt() -> Modifiers {
+    Modifiers {
+        ctrl: true,
+        alt: true,
+        ..Default::default()
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Unmodified ASCII (libvterm 25state_input.test)
@@ -19,13 +33,19 @@ fn ctrl_alt() -> Modifiers { Modifiers { ctrl: true, alt: true, ..Default::defau
 #[test]
 fn input_ascii_uppercase_a() {
     // libvterm: INCHAR 0 41 => output "A"
-    assert_eq!(encode_key(Key::Char('A'), no_mods(), false, false, false, false), b"A");
+    assert_eq!(
+        encode_key(Key::Char('A'), no_mods(), false, false, false, false),
+        b"A"
+    );
 }
 
 #[test]
 fn input_ascii_lowercase_a() {
     // libvterm: INCHAR 0 61 => output "a"
-    assert_eq!(encode_key(Key::Char('a'), no_mods(), false, false, false, false), b"a");
+    assert_eq!(
+        encode_key(Key::Char('a'), no_mods(), false, false, false, false),
+        b"a"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -170,12 +190,41 @@ fn input_ctrl_i_disambiguation() {
 #[test]
 fn input_space_with_modifiers() {
     // libvterm: Space (0x20) special handling
-    assert_eq!(encode_key(Key::Char(' '), no_mods(), false, false, false, false), b" ");
-    assert_eq!(encode_key(Key::Char(' '), shift(), false, false, false, false), b"\x1b[32;2u");
-    assert_eq!(encode_key(Key::Char(' '), ctrl(), false, false, false, false), b"\x00");
-    assert_eq!(encode_key(Key::Char(' '), Modifiers { shift: true, ctrl: true, ..Default::default() }, false, false, false, false), b"\x1b[32;6u");
-    assert_eq!(encode_key(Key::Char(' '), alt(), false, false, false, false), b"\x1b ");
-    assert_eq!(encode_key(Key::Char(' '), ctrl_alt(), false, false, false, false), b"\x1b\x00");
+    assert_eq!(
+        encode_key(Key::Char(' '), no_mods(), false, false, false, false),
+        b" "
+    );
+    assert_eq!(
+        encode_key(Key::Char(' '), shift(), false, false, false, false),
+        b"\x1b[32;2u"
+    );
+    assert_eq!(
+        encode_key(Key::Char(' '), ctrl(), false, false, false, false),
+        b"\x00"
+    );
+    assert_eq!(
+        encode_key(
+            Key::Char(' '),
+            Modifiers {
+                shift: true,
+                ctrl: true,
+                ..Default::default()
+            },
+            false,
+            false,
+            false,
+            false
+        ),
+        b"\x1b[32;6u"
+    );
+    assert_eq!(
+        encode_key(Key::Char(' '), alt(), false, false, false, false),
+        b"\x1b "
+    );
+    assert_eq!(
+        encode_key(Key::Char(' '), ctrl_alt(), false, false, false, false),
+        b"\x1b\x00"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -185,59 +234,126 @@ fn input_space_with_modifiers() {
 #[test]
 fn input_cursor_up_normal_mode() {
     // libvterm: INKEY 0 Up => "\x1b[A"
-    assert_eq!(encode_key(Key::Up, no_mods(), false, false, false, false), b"\x1b[A");
+    assert_eq!(
+        encode_key(Key::Up, no_mods(), false, false, false, false),
+        b"\x1b[A"
+    );
 }
 
 #[test]
 fn input_cursor_keys_with_shift() {
     // libvterm: INKEY S Up => "\x1b[1;2A"
-    assert_eq!(encode_key(Key::Up, shift(), false, false, false, false), b"\x1b[1;2A");
+    assert_eq!(
+        encode_key(Key::Up, shift(), false, false, false, false),
+        b"\x1b[1;2A"
+    );
 }
 
 #[test]
 fn input_cursor_keys_with_ctrl() {
     // libvterm: INKEY C Up => "\x1b[1;5A"
-    assert_eq!(encode_key(Key::Up, ctrl(), false, false, false, false), b"\x1b[1;5A");
+    assert_eq!(
+        encode_key(Key::Up, ctrl(), false, false, false, false),
+        b"\x1b[1;5A"
+    );
 }
 
 #[test]
 fn input_cursor_keys_with_alt() {
     // libvterm: INKEY A Up => "\x1b[1;3A"
-    assert_eq!(encode_key(Key::Up, alt(), false, false, false, false), b"\x1b[1;3A");
+    assert_eq!(
+        encode_key(Key::Up, alt(), false, false, false, false),
+        b"\x1b[1;3A"
+    );
 }
 
 #[test]
 fn input_cursor_keys_all_modifiers() {
     // Shift+Ctrl = 6, Shift+Alt = 4, Ctrl+Alt = 7, Shift+Ctrl+Alt = 8
-    let sc = Modifiers { shift: true, ctrl: true, ..Default::default() };
-    let sa = Modifiers { shift: true, alt: true, ..Default::default() };
-    let ca = Modifiers { ctrl: true, alt: true, ..Default::default() };
-    let sca = Modifiers { shift: true, alt: true, ctrl: true };
+    let sc = Modifiers {
+        shift: true,
+        ctrl: true,
+        ..Default::default()
+    };
+    let sa = Modifiers {
+        shift: true,
+        alt: true,
+        ..Default::default()
+    };
+    let ca = Modifiers {
+        ctrl: true,
+        alt: true,
+        ..Default::default()
+    };
+    let sca = Modifiers {
+        shift: true,
+        alt: true,
+        ctrl: true,
+    };
 
-    assert_eq!(encode_key(Key::Up, sc, false, false, false, false), b"\x1b[1;6A");
-    assert_eq!(encode_key(Key::Up, sa, false, false, false, false), b"\x1b[1;4A");
-    assert_eq!(encode_key(Key::Up, ca, false, false, false, false), b"\x1b[1;7A");
-    assert_eq!(encode_key(Key::Up, sca, false, false, false, false), b"\x1b[1;8A");
+    assert_eq!(
+        encode_key(Key::Up, sc, false, false, false, false),
+        b"\x1b[1;6A"
+    );
+    assert_eq!(
+        encode_key(Key::Up, sa, false, false, false, false),
+        b"\x1b[1;4A"
+    );
+    assert_eq!(
+        encode_key(Key::Up, ca, false, false, false, false),
+        b"\x1b[1;7A"
+    );
+    assert_eq!(
+        encode_key(Key::Up, sca, false, false, false, false),
+        b"\x1b[1;8A"
+    );
 }
 
 #[test]
 fn input_cursor_keys_application_mode() {
     // After CSI ?1h (DECCKM): INKEY 0 Up => "\x1bOA"
-    assert_eq!(encode_key(Key::Up, no_mods(), true, false, false, false), b"\x1bOA");
-    assert_eq!(encode_key(Key::Down, no_mods(), true, false, false, false), b"\x1bOB");
-    assert_eq!(encode_key(Key::Right, no_mods(), true, false, false, false), b"\x1bOC");
-    assert_eq!(encode_key(Key::Left, no_mods(), true, false, false, false), b"\x1bOD");
+    assert_eq!(
+        encode_key(Key::Up, no_mods(), true, false, false, false),
+        b"\x1bOA"
+    );
+    assert_eq!(
+        encode_key(Key::Down, no_mods(), true, false, false, false),
+        b"\x1bOB"
+    );
+    assert_eq!(
+        encode_key(Key::Right, no_mods(), true, false, false, false),
+        b"\x1bOC"
+    );
+    assert_eq!(
+        encode_key(Key::Left, no_mods(), true, false, false, false),
+        b"\x1bOD"
+    );
     // Modified keys still use CSI even in app mode
-    assert_eq!(encode_key(Key::Up, shift(), true, false, false, false), b"\x1b[1;2A");
+    assert_eq!(
+        encode_key(Key::Up, shift(), true, false, false, false),
+        b"\x1b[1;2A"
+    );
 }
 
 #[test]
 fn input_arrow_keys_tmux() {
     // tmux: Up => ^[[A, Down => ^[[B, Right => ^[[C, Left => ^[[D
-    assert_eq!(encode_key(Key::Up, no_mods(), false, false, false, false), b"\x1b[A");
-    assert_eq!(encode_key(Key::Down, no_mods(), false, false, false, false), b"\x1b[B");
-    assert_eq!(encode_key(Key::Right, no_mods(), false, false, false, false), b"\x1b[C");
-    assert_eq!(encode_key(Key::Left, no_mods(), false, false, false, false), b"\x1b[D");
+    assert_eq!(
+        encode_key(Key::Up, no_mods(), false, false, false, false),
+        b"\x1b[A"
+    );
+    assert_eq!(
+        encode_key(Key::Down, no_mods(), false, false, false, false),
+        b"\x1b[B"
+    );
+    assert_eq!(
+        encode_key(Key::Right, no_mods(), false, false, false, false),
+        b"\x1b[C"
+    );
+    assert_eq!(
+        encode_key(Key::Left, no_mods(), false, false, false, false),
+        b"\x1b[D"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -247,47 +363,104 @@ fn input_arrow_keys_tmux() {
 #[test]
 fn input_f1_unmodified() {
     // libvterm: INKEY 0 F1 => "\x1bOP" (SS3 P)
-    assert_eq!(encode_key(Key::F(1), no_mods(), false, false, false, false), b"\x1bOP");
+    assert_eq!(
+        encode_key(Key::F(1), no_mods(), false, false, false, false),
+        b"\x1bOP"
+    );
 }
 
 #[test]
 fn input_f1_modified() {
     // libvterm: INKEY S F1 => "\x1b[1;2P"
-    assert_eq!(encode_key(Key::F(1), shift(), false, false, false, false), b"\x1b[1;2P");
-    assert_eq!(encode_key(Key::F(1), alt(), false, false, false, false), b"\x1b[1;3P");
-    assert_eq!(encode_key(Key::F(1), ctrl(), false, false, false, false), b"\x1b[1;5P");
+    assert_eq!(
+        encode_key(Key::F(1), shift(), false, false, false, false),
+        b"\x1b[1;2P"
+    );
+    assert_eq!(
+        encode_key(Key::F(1), alt(), false, false, false, false),
+        b"\x1b[1;3P"
+    );
+    assert_eq!(
+        encode_key(Key::F(1), ctrl(), false, false, false, false),
+        b"\x1b[1;5P"
+    );
 }
 
 #[test]
 fn input_f2_f4_unmodified() {
     // tmux: F2 => ^[OQ, F3 => ^[OR, F4 => ^[OS
-    assert_eq!(encode_key(Key::F(2), no_mods(), false, false, false, false), b"\x1bOQ");
-    assert_eq!(encode_key(Key::F(3), no_mods(), false, false, false, false), b"\x1bOR");
-    assert_eq!(encode_key(Key::F(4), no_mods(), false, false, false, false), b"\x1bOS");
+    assert_eq!(
+        encode_key(Key::F(2), no_mods(), false, false, false, false),
+        b"\x1bOQ"
+    );
+    assert_eq!(
+        encode_key(Key::F(3), no_mods(), false, false, false, false),
+        b"\x1bOR"
+    );
+    assert_eq!(
+        encode_key(Key::F(4), no_mods(), false, false, false, false),
+        b"\x1bOS"
+    );
 }
 
 #[test]
 fn input_f5_f12_unmodified() {
     // tmux: F5 => ^[[15~, F6 => ^[[17~, F7 => ^[[18~, F8 => ^[[19~
     // F9 => ^[[20~, F10 => ^[[21~, F11 => ^[[23~, F12 => ^[[24~
-    assert_eq!(encode_key(Key::F(5), no_mods(), false, false, false, false), b"\x1b[15~");
-    assert_eq!(encode_key(Key::F(6), no_mods(), false, false, false, false), b"\x1b[17~");
-    assert_eq!(encode_key(Key::F(7), no_mods(), false, false, false, false), b"\x1b[18~");
-    assert_eq!(encode_key(Key::F(8), no_mods(), false, false, false, false), b"\x1b[19~");
-    assert_eq!(encode_key(Key::F(9), no_mods(), false, false, false, false), b"\x1b[20~");
-    assert_eq!(encode_key(Key::F(10), no_mods(), false, false, false, false), b"\x1b[21~");
-    assert_eq!(encode_key(Key::F(11), no_mods(), false, false, false, false), b"\x1b[23~");
-    assert_eq!(encode_key(Key::F(12), no_mods(), false, false, false, false), b"\x1b[24~");
+    assert_eq!(
+        encode_key(Key::F(5), no_mods(), false, false, false, false),
+        b"\x1b[15~"
+    );
+    assert_eq!(
+        encode_key(Key::F(6), no_mods(), false, false, false, false),
+        b"\x1b[17~"
+    );
+    assert_eq!(
+        encode_key(Key::F(7), no_mods(), false, false, false, false),
+        b"\x1b[18~"
+    );
+    assert_eq!(
+        encode_key(Key::F(8), no_mods(), false, false, false, false),
+        b"\x1b[19~"
+    );
+    assert_eq!(
+        encode_key(Key::F(9), no_mods(), false, false, false, false),
+        b"\x1b[20~"
+    );
+    assert_eq!(
+        encode_key(Key::F(10), no_mods(), false, false, false, false),
+        b"\x1b[21~"
+    );
+    assert_eq!(
+        encode_key(Key::F(11), no_mods(), false, false, false, false),
+        b"\x1b[23~"
+    );
+    assert_eq!(
+        encode_key(Key::F(12), no_mods(), false, false, false, false),
+        b"\x1b[24~"
+    );
 }
 
 #[test]
 fn input_function_keys_extended_modifiers() {
     // S-F1 => ^[[1;2P, C-F1 => ^[[1;5P
-    assert_eq!(encode_key(Key::F(1), shift(), false, false, false, false), b"\x1b[1;2P");
-    assert_eq!(encode_key(Key::F(1), ctrl(), false, false, false, false), b"\x1b[1;5P");
+    assert_eq!(
+        encode_key(Key::F(1), shift(), false, false, false, false),
+        b"\x1b[1;2P"
+    );
+    assert_eq!(
+        encode_key(Key::F(1), ctrl(), false, false, false, false),
+        b"\x1b[1;5P"
+    );
     // S-F5 => ^[[15;2~, C-F5 => ^[[15;5~
-    assert_eq!(encode_key(Key::F(5), shift(), false, false, false, false), b"\x1b[15;2~");
-    assert_eq!(encode_key(Key::F(5), ctrl(), false, false, false, false), b"\x1b[15;5~");
+    assert_eq!(
+        encode_key(Key::F(5), shift(), false, false, false, false),
+        b"\x1b[15;2~"
+    );
+    assert_eq!(
+        encode_key(Key::F(5), ctrl(), false, false, false, false),
+        b"\x1b[15;5~"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -297,31 +470,52 @@ fn input_function_keys_extended_modifiers() {
 #[test]
 fn input_tab_and_shift_tab() {
     // INKEY 0 Tab => "\x09"
-    assert_eq!(encode_key(Key::Tab, no_mods(), false, false, false, false), b"\x09");
+    assert_eq!(
+        encode_key(Key::Tab, no_mods(), false, false, false, false),
+        b"\x09"
+    );
     // INKEY S Tab => "\x1b[Z" (reverse tab / backtab)
-    assert_eq!(encode_key(Key::Tab, shift(), false, false, false, false), b"\x1b[Z");
+    assert_eq!(
+        encode_key(Key::Tab, shift(), false, false, false, false),
+        b"\x1b[Z"
+    );
     // INKEY A Tab => "\x1b\x09"
-    assert_eq!(encode_key(Key::Tab, alt(), false, false, false, false), b"\x1b\x09");
+    assert_eq!(
+        encode_key(Key::Tab, alt(), false, false, false, false),
+        b"\x1b\x09"
+    );
 }
 
 #[test]
 fn input_enter_linefeed_mode() {
     // libvterm: INKEY 0 Enter => "\x0d" (CR)
-    assert_eq!(encode_key(Key::Enter, no_mods(), false, false, false, false), b"\x0d");
+    assert_eq!(
+        encode_key(Key::Enter, no_mods(), false, false, false, false),
+        b"\x0d"
+    );
 }
 
 #[test]
 fn input_enter_newline_mode() {
     // After CSI 20h (LNM): INKEY 0 Enter => "\x0d\x0a" (CR+LF)
-    assert_eq!(encode_key(Key::Enter, no_mods(), false, false, true, false), b"\x0d\x0a");
+    assert_eq!(
+        encode_key(Key::Enter, no_mods(), false, false, true, false),
+        b"\x0d\x0a"
+    );
 }
 
 #[test]
 fn input_backspace_tmux() {
     // tmux: BSpace => ^? (0x7F)
-    assert_eq!(encode_key(Key::Backspace, no_mods(), false, false, false, false), b"\x7f");
+    assert_eq!(
+        encode_key(Key::Backspace, no_mods(), false, false, false, false),
+        b"\x7f"
+    );
     // M-BSpace => ^[^?
-    assert_eq!(encode_key(Key::Backspace, alt(), false, false, false, false), b"\x1b\x7f");
+    assert_eq!(
+        encode_key(Key::Backspace, alt(), false, false, false, false),
+        b"\x1b\x7f"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -330,7 +524,7 @@ fn input_backspace_tmux() {
 
 #[test]
 fn input_keypad_numeric_mode() {
-    use emux_term::input::{encode_keypad, KeypadKey};
+    use emux_term::input::{KeypadKey, encode_keypad};
     // DECKPNM (default): KP0 => '0'
     assert_eq!(encode_keypad(KeypadKey::Num0, false), b"0");
     assert_eq!(encode_keypad(KeypadKey::Num1, false), b"1");
@@ -343,7 +537,7 @@ fn input_keypad_numeric_mode() {
 
 #[test]
 fn input_keypad_application_mode() {
-    use emux_term::input::{encode_keypad, KeypadKey};
+    use emux_term::input::{KeypadKey, encode_keypad};
     // After ESC = (DECKPAM): KP0 => "\x1bOp"
     assert_eq!(encode_keypad(KeypadKey::Num0, true), b"\x1bOp");
     assert_eq!(encode_keypad(KeypadKey::Num1, true), b"\x1bOq");
@@ -354,7 +548,7 @@ fn input_keypad_application_mode() {
 
 #[test]
 fn input_keypad_operators_tmux() {
-    use emux_term::input::{encode_keypad, KeypadKey};
+    use emux_term::input::{KeypadKey, encode_keypad};
     // tmux: KP* => '*', KP+ => '+', etc.
     assert_eq!(encode_keypad(KeypadKey::Star, false), b"*");
     assert_eq!(encode_keypad(KeypadKey::Plus, false), b"+");
@@ -370,35 +564,75 @@ fn input_keypad_operators_tmux() {
 #[test]
 fn input_insert_delete() {
     // tmux: IC/Insert => ^[[2~, DC/Delete => ^[[3~
-    assert_eq!(encode_key(Key::Insert, no_mods(), false, false, false, false), b"\x1b[2~");
-    assert_eq!(encode_key(Key::Delete, no_mods(), false, false, false, false), b"\x1b[3~");
+    assert_eq!(
+        encode_key(Key::Insert, no_mods(), false, false, false, false),
+        b"\x1b[2~"
+    );
+    assert_eq!(
+        encode_key(Key::Delete, no_mods(), false, false, false, false),
+        b"\x1b[3~"
+    );
 }
 
 #[test]
 fn input_home_end() {
     // Home => ^[[H, End => ^[[F (xterm-style)
-    assert_eq!(encode_key(Key::Home, no_mods(), false, false, false, false), b"\x1b[H");
-    assert_eq!(encode_key(Key::End, no_mods(), false, false, false, false), b"\x1b[F");
+    assert_eq!(
+        encode_key(Key::Home, no_mods(), false, false, false, false),
+        b"\x1b[H"
+    );
+    assert_eq!(
+        encode_key(Key::End, no_mods(), false, false, false, false),
+        b"\x1b[F"
+    );
     // S-Home => ^[[1;2H, C-Home => ^[[1;5H
-    assert_eq!(encode_key(Key::Home, shift(), false, false, false, false), b"\x1b[1;2H");
-    assert_eq!(encode_key(Key::Home, ctrl(), false, false, false, false), b"\x1b[1;5H");
+    assert_eq!(
+        encode_key(Key::Home, shift(), false, false, false, false),
+        b"\x1b[1;2H"
+    );
+    assert_eq!(
+        encode_key(Key::Home, ctrl(), false, false, false, false),
+        b"\x1b[1;5H"
+    );
 }
 
 #[test]
 fn input_page_up_down() {
     // PPage/PageUp => ^[[5~, NPage/PageDown => ^[[6~
-    assert_eq!(encode_key(Key::PageUp, no_mods(), false, false, false, false), b"\x1b[5~");
-    assert_eq!(encode_key(Key::PageDown, no_mods(), false, false, false, false), b"\x1b[6~");
+    assert_eq!(
+        encode_key(Key::PageUp, no_mods(), false, false, false, false),
+        b"\x1b[5~"
+    );
+    assert_eq!(
+        encode_key(Key::PageDown, no_mods(), false, false, false, false),
+        b"\x1b[6~"
+    );
 }
 
 #[test]
 fn input_navigation_extended_modifiers() {
     // Modifier encoding: 2=S, 3=M, 4=SM, 5=C, 6=SC, 7=CM, 8=SCM
-    let sc = Modifiers { shift: true, ctrl: true, ..Default::default() };
-    assert_eq!(encode_key(Key::Insert, shift(), false, false, false, false), b"\x1b[2;2~");
-    assert_eq!(encode_key(Key::Delete, ctrl(), false, false, false, false), b"\x1b[3;5~");
-    assert_eq!(encode_key(Key::PageUp, alt(), false, false, false, false), b"\x1b[5;3~");
-    assert_eq!(encode_key(Key::PageDown, sc, false, false, false, false), b"\x1b[6;6~");
+    let sc = Modifiers {
+        shift: true,
+        ctrl: true,
+        ..Default::default()
+    };
+    assert_eq!(
+        encode_key(Key::Insert, shift(), false, false, false, false),
+        b"\x1b[2;2~"
+    );
+    assert_eq!(
+        encode_key(Key::Delete, ctrl(), false, false, false, false),
+        b"\x1b[3;5~"
+    );
+    assert_eq!(
+        encode_key(Key::PageUp, alt(), false, false, false, false),
+        b"\x1b[5;3~"
+    );
+    assert_eq!(
+        encode_key(Key::PageDown, sc, false, false, false, false),
+        b"\x1b[6;6~"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -416,10 +650,7 @@ fn input_bracketed_paste_off() {
 fn input_bracketed_paste_on() {
     use emux_term::input::encode_paste;
     // With bracketed paste, text is wrapped in ESC[200~ ... ESC[201~
-    assert_eq!(
-        encode_paste("hello", true),
-        b"\x1b[200~hello\x1b[201~"
-    );
+    assert_eq!(encode_paste("hello", true), b"\x1b[200~hello\x1b[201~");
 }
 
 #[test]
@@ -485,7 +716,11 @@ fn input_mouse_normal_mode_click() {
     // X10 mouse: CSI M + button+32 + col+33 + row+33
     // Button 0 click at (0,0) => "\x1b[M" 0x20 0x21 0x21
     let result = encode_mouse(
-        MouseEvent::Press { button: 0, col: 0, row: 0 },
+        MouseEvent::Press {
+            button: 0,
+            col: 0,
+            row: 0,
+        },
         MouseEncoding::Normal,
     );
     assert_eq!(result, b"\x1b[M\x20\x21\x21");
@@ -496,7 +731,11 @@ fn input_mouse_sgr_mode_press() {
     // SGR mouse: CSI < button ; col ; row M
     // Button 0 press at col 9, row 4 => "\x1b[<0;10;5M"
     let result = encode_mouse(
-        MouseEvent::Press { button: 0, col: 9, row: 4 },
+        MouseEvent::Press {
+            button: 0,
+            col: 9,
+            row: 4,
+        },
         MouseEncoding::Sgr,
     );
     assert_eq!(result, b"\x1b[<0;10;5M");
@@ -506,10 +745,7 @@ fn input_mouse_sgr_mode_press() {
 fn input_mouse_sgr_mode_release() {
     // SGR mouse release: CSI < button ; col ; row m (lowercase m)
     // Button 0 release at col 9, row 4 => "\x1b[<0;10;5m"
-    let result = encode_mouse(
-        MouseEvent::Release { col: 9, row: 4 },
-        MouseEncoding::Sgr,
-    );
+    let result = encode_mouse(MouseEvent::Release { col: 9, row: 4 }, MouseEncoding::Sgr);
     assert_eq!(result, b"\x1b[<0;10;5m");
 }
 
@@ -517,10 +753,7 @@ fn input_mouse_sgr_mode_release() {
 fn input_mouse_scroll_wheel() {
     // Scroll up = button 64, scroll down = button 65
     // SGR: "\x1b[<64;col+1;row+1M" for scroll up
-    let result = encode_mouse(
-        MouseEvent::ScrollUp { col: 5, row: 10 },
-        MouseEncoding::Sgr,
-    );
+    let result = encode_mouse(MouseEvent::ScrollUp { col: 5, row: 10 }, MouseEncoding::Sgr);
     assert_eq!(result, b"\x1b[<64;6;11M");
 
     let result = encode_mouse(
@@ -535,7 +768,11 @@ fn input_mouse_drag_tracking() {
     // Drag with button 0 held: button = 32 (motion) + 0
     // SGR: "\x1b[<32;col+1;row+1M"
     let result = encode_mouse(
-        MouseEvent::Drag { button: 0, col: 15, row: 20 },
+        MouseEvent::Drag {
+            button: 0,
+            col: 15,
+            row: 20,
+        },
         MouseEncoding::Sgr,
     );
     assert_eq!(result, b"\x1b[<32;16;21M");
@@ -559,7 +796,11 @@ fn input_mouse_normal_mode_release() {
 fn input_mouse_normal_mode_right_click() {
     // Button 2 (right) press at (3, 7): button byte = 2 + 32 = 34
     let result = encode_mouse(
-        MouseEvent::Press { button: 2, col: 3, row: 7 },
+        MouseEvent::Press {
+            button: 2,
+            col: 3,
+            row: 7,
+        },
         MouseEncoding::Normal,
     );
     assert_eq!(result, vec![0x1B, b'[', b'M', 34, 3 + 33, 7 + 33]);
@@ -569,7 +810,11 @@ fn input_mouse_normal_mode_right_click() {
 fn input_mouse_normal_mode_middle_click() {
     // Button 1 (middle) press at (0, 0): button byte = 1 + 32 = 33
     let result = encode_mouse(
-        MouseEvent::Press { button: 1, col: 0, row: 0 },
+        MouseEvent::Press {
+            button: 1,
+            col: 0,
+            row: 0,
+        },
         MouseEncoding::Normal,
     );
     assert_eq!(result, vec![0x1B, b'[', b'M', 33, 0 + 33, 0 + 33]);
@@ -599,7 +844,11 @@ fn input_mouse_normal_mode_scroll_down() {
 fn input_mouse_normal_mode_drag() {
     // Drag button 0: button byte = 0 + 32 + 32 = 64
     let result = encode_mouse(
-        MouseEvent::Drag { button: 0, col: 20, row: 15 },
+        MouseEvent::Drag {
+            button: 0,
+            col: 20,
+            row: 15,
+        },
         MouseEncoding::Normal,
     );
     assert_eq!(result, vec![0x1B, b'[', b'M', 64, 20 + 33, 15 + 33]);
@@ -609,7 +858,11 @@ fn input_mouse_normal_mode_drag() {
 fn input_mouse_sgr_mode_right_click() {
     // SGR: button 2 press at (10, 20) => "\x1b[<2;11;21M"
     let result = encode_mouse(
-        MouseEvent::Press { button: 2, col: 10, row: 20 },
+        MouseEvent::Press {
+            button: 2,
+            col: 10,
+            row: 20,
+        },
         MouseEncoding::Sgr,
     );
     assert_eq!(result, b"\x1b[<2;11;21M");
@@ -620,7 +873,11 @@ fn input_mouse_sgr_mode_drag() {
     // SGR drag: button + 32 for motion flag
     // Drag button 1 at (5, 3) => "\x1b[<33;6;4M"
     let result = encode_mouse(
-        MouseEvent::Drag { button: 1, col: 5, row: 3 },
+        MouseEvent::Drag {
+            button: 1,
+            col: 5,
+            row: 3,
+        },
         MouseEncoding::Sgr,
     );
     assert_eq!(result, b"\x1b[<33;6;4M");
@@ -631,7 +888,11 @@ fn input_mouse_sgr_large_coordinates() {
     // SGR supports coordinates > 223 (unlike X10 normal mode).
     // Press at col 300, row 200 => "\x1b[<0;301;201M"
     let result = encode_mouse(
-        MouseEvent::Press { button: 0, col: 300, row: 200 },
+        MouseEvent::Press {
+            button: 0,
+            col: 300,
+            row: 200,
+        },
         MouseEncoding::Sgr,
     );
     assert_eq!(result, b"\x1b[<0;301;201M");
@@ -641,13 +902,21 @@ fn input_mouse_sgr_large_coordinates() {
 fn input_mouse_normal_mode_origin() {
     // Verify encoding at the origin (0,0) in both modes.
     let normal = encode_mouse(
-        MouseEvent::Press { button: 0, col: 0, row: 0 },
+        MouseEvent::Press {
+            button: 0,
+            col: 0,
+            row: 0,
+        },
         MouseEncoding::Normal,
     );
     assert_eq!(normal, b"\x1b[M\x20\x21\x21");
 
     let sgr = encode_mouse(
-        MouseEvent::Press { button: 0, col: 0, row: 0 },
+        MouseEvent::Press {
+            button: 0,
+            col: 0,
+            row: 0,
+        },
         MouseEncoding::Sgr,
     );
     assert_eq!(sgr, b"\x1b[<0;1;1M");
@@ -688,11 +957,23 @@ fn input_focus_out_disabled_produces_empty() {
 #[test]
 fn input_home_end_application_cursor_mode() {
     // In application cursor mode, Home/End use SS3 encoding
-    assert_eq!(encode_key(Key::Home, no_mods(), true, false, false, false), b"\x1bOH");
-    assert_eq!(encode_key(Key::End, no_mods(), true, false, false, false), b"\x1bOF");
+    assert_eq!(
+        encode_key(Key::Home, no_mods(), true, false, false, false),
+        b"\x1bOH"
+    );
+    assert_eq!(
+        encode_key(Key::End, no_mods(), true, false, false, false),
+        b"\x1bOF"
+    );
     // Modified Home/End still use CSI even in app cursor mode
-    assert_eq!(encode_key(Key::Home, shift(), true, false, false, false), b"\x1b[1;2H");
-    assert_eq!(encode_key(Key::End, ctrl(), true, false, false, false), b"\x1b[1;5F");
+    assert_eq!(
+        encode_key(Key::Home, shift(), true, false, false, false),
+        b"\x1b[1;2H"
+    );
+    assert_eq!(
+        encode_key(Key::End, ctrl(), true, false, false, false),
+        b"\x1b[1;5F"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -701,14 +982,23 @@ fn input_home_end_application_cursor_mode() {
 
 #[test]
 fn input_escape_key() {
-    assert_eq!(encode_key(Key::Escape, no_mods(), false, false, false, false), b"\x1b");
+    assert_eq!(
+        encode_key(Key::Escape, no_mods(), false, false, false, false),
+        b"\x1b"
+    );
 }
 
 #[test]
 fn input_escape_key_with_modifiers() {
     // Modifiers on escape are currently ignored (raw ESC)
-    assert_eq!(encode_key(Key::Escape, alt(), false, false, false, false), b"\x1b");
-    assert_eq!(encode_key(Key::Escape, ctrl(), false, false, false, false), b"\x1b");
+    assert_eq!(
+        encode_key(Key::Escape, alt(), false, false, false, false),
+        b"\x1b"
+    );
+    assert_eq!(
+        encode_key(Key::Escape, ctrl(), false, false, false, false),
+        b"\x1b"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -718,7 +1008,10 @@ fn input_escape_key_with_modifiers() {
 #[test]
 fn input_ctrl_backspace() {
     // Ctrl+Backspace => 0x08 (BS)
-    assert_eq!(encode_key(Key::Backspace, ctrl(), false, false, false, false), b"\x08");
+    assert_eq!(
+        encode_key(Key::Backspace, ctrl(), false, false, false, false),
+        b"\x08"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -727,8 +1020,14 @@ fn input_ctrl_backspace() {
 
 #[test]
 fn input_function_key_out_of_range() {
-    assert_eq!(encode_key(Key::F(13), no_mods(), false, false, false, false), b"");
-    assert_eq!(encode_key(Key::F(0), no_mods(), false, false, false, false), b"");
+    assert_eq!(
+        encode_key(Key::F(13), no_mods(), false, false, false, false),
+        b""
+    );
+    assert_eq!(
+        encode_key(Key::F(0), no_mods(), false, false, false, false),
+        b""
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -737,7 +1036,7 @@ fn input_function_key_out_of_range() {
 
 #[test]
 fn input_keypad_all_keys_application_mode() {
-    use emux_term::input::{encode_keypad, KeypadKey};
+    use emux_term::input::{KeypadKey, encode_keypad};
     assert_eq!(encode_keypad(KeypadKey::Num2, true), b"\x1bOr");
     assert_eq!(encode_keypad(KeypadKey::Num3, true), b"\x1bOs");
     assert_eq!(encode_keypad(KeypadKey::Num4, true), b"\x1bOt");

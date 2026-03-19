@@ -96,9 +96,9 @@ fn screen_ascii_eol_detection() {
     // screen_eol 0,3 => true (at end of line content)
     let mut t = TestTerminal::new(80, 25);
     t.push(b"ABC");
-    assert!(!is_eol(&t,0, 0));
-    assert!(!is_eol(&t,0, 2));
-    assert!(is_eol(&t,0, 3));
+    assert!(!is_eol(&t, 0, 0));
+    assert!(!is_eol(&t, 0, 2));
+    assert!(is_eol(&t, 0, 3));
 }
 
 #[test]
@@ -353,18 +353,38 @@ fn altscreen_damage_on_switch() {
     t.push(b"\x1b[?1049h"); // enter alt screen
     let damage = t.screen.take_damage();
     // Should damage every row
-    assert!(!damage.is_empty(), "entering alt screen should produce damage");
+    assert!(
+        !damage.is_empty(),
+        "entering alt screen should produce damage"
+    );
     assert_eq!(damage.len(), 25);
     for r in 0..25 {
-        assert_eq!(damage[r], DamageRegion { row: r, col_start: 0, col_end: 80 });
+        assert_eq!(
+            damage[r],
+            DamageRegion {
+                row: r,
+                col_start: 0,
+                col_end: 80
+            }
+        );
     }
 
     t.push(b"\x1b[?1049l"); // leave alt screen
     let damage = t.screen.take_damage();
-    assert!(!damage.is_empty(), "leaving alt screen should produce damage");
+    assert!(
+        !damage.is_empty(),
+        "leaving alt screen should produce damage"
+    );
     assert_eq!(damage.len(), 25);
     for r in 0..25 {
-        assert_eq!(damage[r], DamageRegion { row: r, col_start: 0, col_end: 80 });
+        assert_eq!(
+            damage[r],
+            DamageRegion {
+                row: r,
+                col_start: 0,
+                col_end: 80
+            }
+        );
     }
 }
 
@@ -411,7 +431,14 @@ fn damage_putglyph_individual_cells() {
     assert!(!damage.is_empty());
     // After merging, should be one region covering cols 0..3
     assert_eq!(damage.len(), 1);
-    assert_eq!(damage[0], DamageRegion { row: 0, col_start: 0, col_end: 3 });
+    assert_eq!(
+        damage[0],
+        DamageRegion {
+            row: 0,
+            col_start: 0,
+            col_end: 3
+        }
+    );
 }
 
 #[test]
@@ -467,8 +494,7 @@ fn damage_scroll_down() {
     let damage = t.screen.take_damage();
     assert!(!damage.is_empty());
     // Should have damage for all rows in scroll region (0..10)
-    let damaged_rows: std::collections::HashSet<usize> =
-        damage.iter().map(|d| d.row).collect();
+    let damaged_rows: std::collections::HashSet<usize> = damage.iter().map(|d| d.row).collect();
     for r in 0..10 {
         assert!(damaged_rows.contains(&r), "row {} should be damaged", r);
     }
@@ -485,7 +511,14 @@ fn damage_merge_cell_mode() {
     let damage = t.screen.take_damage();
     // Should be merged into a single region
     assert_eq!(damage.len(), 1);
-    assert_eq!(damage[0], DamageRegion { row: 0, col_start: 0, col_end: 2 });
+    assert_eq!(
+        damage[0],
+        DamageRegion {
+            row: 0,
+            col_start: 0,
+            col_end: 2
+        }
+    );
 }
 
 #[test]
@@ -498,7 +531,14 @@ fn damage_merge_row_mode() {
     t.push(b"X");
     let damage = t.screen.take_damage();
     assert_eq!(damage.len(), 1);
-    assert_eq!(damage[0], DamageRegion { row: 0, col_start: 0, col_end: 80 });
+    assert_eq!(
+        damage[0],
+        DamageRegion {
+            row: 0,
+            col_start: 0,
+            col_end: 80
+        }
+    );
 }
 
 #[test]
@@ -513,7 +553,14 @@ fn damage_merge_screen_mode() {
     // Should cover all 25 rows
     assert_eq!(damage.len(), 25);
     for r in 0..25 {
-        assert_eq!(damage[r], DamageRegion { row: r, col_start: 0, col_end: 80 });
+        assert_eq!(
+            damage[r],
+            DamageRegion {
+                row: r,
+                col_start: 0,
+                col_end: 80
+            }
+        );
     }
 }
 
@@ -529,10 +576,13 @@ fn damage_moverect_with_scroll() {
     let damage = t.screen.take_damage();
     assert!(!damage.is_empty());
     // Full scroll region (0..25) should be damaged
-    let damaged_rows: std::collections::HashSet<usize> =
-        damage.iter().map(|d| d.row).collect();
+    let damaged_rows: std::collections::HashSet<usize> = damage.iter().map(|d| d.row).collect();
     for r in 0..25 {
-        assert!(damaged_rows.contains(&r), "row {} should be damaged after scroll", r);
+        assert!(
+            damaged_rows.contains(&r),
+            "row {} should be damaged after scroll",
+            r
+        );
     }
 }
 
@@ -546,10 +596,13 @@ fn damage_merge_scroll_mode() {
     t.push(b"\x1b[S"); // SU: scroll up 1 line
     let damage = t.screen.take_damage();
     assert!(!damage.is_empty());
-    let damaged_rows: std::collections::HashSet<usize> =
-        damage.iter().map(|d| d.row).collect();
+    let damaged_rows: std::collections::HashSet<usize> = damage.iter().map(|d| d.row).collect();
     for r in 0..25 {
-        assert!(damaged_rows.contains(&r), "row {} should be damaged in scroll mode", r);
+        assert!(
+            damaged_rows.contains(&r),
+            "row {} should be damaged in scroll mode",
+            r
+        );
     }
 }
 
@@ -559,7 +612,9 @@ fn damage_scroll_with_content() {
     let mut t = TestTerminal::new(80, 25);
     for i in 0..25 {
         t.push_str(&format!("Row{}", i));
-        if i < 24 { t.push(b"\r\n"); }
+        if i < 24 {
+            t.push(b"\r\n");
+        }
     }
     t.screen.set_damage_mode(DamageMode::Cell);
     let _ = t.screen.take_damage();
@@ -569,11 +624,12 @@ fn damage_scroll_with_content() {
     let damage = t.screen.take_damage();
     assert!(!damage.is_empty());
     // At minimum, the scroll region should be damaged
-    let damaged_rows: std::collections::HashSet<usize> =
-        damage.iter().map(|d| d.row).collect();
+    let damaged_rows: std::collections::HashSet<usize> = damage.iter().map(|d| d.row).collect();
     // The last row should be damaged (new blank line from scroll)
-    assert!(damaged_rows.contains(&24) || damaged_rows.contains(&0),
-        "scroll region should include damaged rows");
+    assert!(
+        damaged_rows.contains(&24) || damaged_rows.contains(&0),
+        "scroll region should include damaged rows"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -833,7 +889,11 @@ fn reflow_shell_prompt_wrap_12cols() {
     // Single row, truncated: "user@host:~$" is 12 chars + space is at 13, but
     // row_text trims trailing spaces, so we get the first 12 chars.
     let text = t.row_text(0);
-    assert!(text.len() <= 12, "row text should fit in 12 cols: '{}'", text);
+    assert!(
+        text.len() <= 12,
+        "row text should fit in 12 cols: '{}'",
+        text
+    );
 }
 
 #[test]
@@ -1002,11 +1062,14 @@ fn screen_scroll_region_damage() {
     t.push(b"\n");
     let damage = t.screen.take_damage();
     assert!(!damage.is_empty());
-    let damaged_rows: std::collections::HashSet<usize> =
-        damage.iter().map(|d| d.row).collect();
+    let damaged_rows: std::collections::HashSet<usize> = damage.iter().map(|d| d.row).collect();
     // All rows in scroll region 4..15 should be damaged
     for r in 4..15 {
-        assert!(damaged_rows.contains(&r), "row {} in scroll region should be damaged", r);
+        assert!(
+            damaged_rows.contains(&r),
+            "row {} in scroll region should be damaged",
+            r
+        );
     }
 }
 
@@ -1025,8 +1088,10 @@ fn screen_damage_outside_scroll_region() {
     let damage = t.screen.take_damage();
     assert!(!damage.is_empty());
     // Only row 0 should be damaged
-    assert!(damage.iter().all(|d| d.row == 0),
-        "damage should only be on row 0");
+    assert!(
+        damage.iter().all(|d| d.row == 0),
+        "damage should only be on row 0"
+    );
 }
 
 #[test]
@@ -1044,6 +1109,8 @@ fn screen_damage_overlapping_scroll_region() {
     let damage = t.screen.take_damage();
     assert!(!damage.is_empty());
     // Damage should be on row 5
-    assert!(damage.iter().any(|d| d.row == 5),
-        "row 5 (inside scroll region) should be damaged");
+    assert!(
+        damage.iter().any(|d| d.row == 5),
+        "row 5 (inside scroll region) should be damaged"
+    );
 }

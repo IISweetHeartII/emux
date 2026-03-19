@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use crossterm::{
     ExecutableCommand,
-    event::{self, Event, EnableBracketedPaste, DisableBracketedPaste},
+    event::{self, DisableBracketedPaste, EnableBracketedPaste, Event},
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use emux_config::ConfigWatcher;
@@ -53,7 +53,12 @@ fn run_event_loop<W: Write>(
     daemon_mode: bool,
     _session_name: &str,
 ) -> Result<ExitReason, AppError> {
-    emux_log!("event loop starting: {}x{}, daemon={}", init_cols, init_rows, daemon_mode);
+    emux_log!(
+        "event loop starting: {}x{}, daemon={}",
+        init_cols,
+        init_rows,
+        daemon_mode
+    );
     let mut cols = init_cols;
     let mut rows = init_rows;
     let c = cols as usize;
@@ -136,9 +141,10 @@ fn run_event_loop<W: Write>(
         let mut dead: Vec<PaneId> = Vec::new();
         for id in &alive_ids {
             if let Some(ps) = app.panes.get(id)
-                && !ps.pty.is_alive() {
-                    dead.push(*id);
-                }
+                && !ps.pty.is_alive()
+            {
+                dead.push(*id);
+            }
         }
         for id in dead {
             app.panes.remove(&id);
@@ -223,13 +229,15 @@ fn run_event_loop<W: Write>(
                         Action::Forward => {
                             // Not a keybinding — forward to active pane's PTY.
                             if let Some(active_id) = app.session.active_tab().active_pane_id()
-                                && let Some(ps) = app.panes.get_mut(&active_id) {
-                                    let bytes = translate_key(key_event, &ps.screen);
-                                    if !bytes.is_empty()
-                                        && let Err(e) = pty_write_all(&mut ps.pty, &bytes) {
-                                        emux_log!("PTY write error: {}", e);
-                                    }
+                                && let Some(ps) = app.panes.get_mut(&active_id)
+                            {
+                                let bytes = translate_key(key_event, &ps.screen);
+                                if !bytes.is_empty()
+                                    && let Err(e) = pty_write_all(&mut ps.pty, &bytes)
+                                {
+                                    emux_log!("PTY write error: {}", e);
                                 }
+                            }
                         }
                     }
                     // Always render immediately on input for responsiveness.
@@ -271,16 +279,16 @@ fn run_event_loop<W: Write>(
                 }
                 Event::Paste(text) => {
                     if let Some(active_id) = app.session.active_tab().active_pane_id()
-                        && let Some(ps) = app.panes.get_mut(&active_id) {
-                            let bytes = emux_term::input::encode_paste(
-                                &text,
-                                ps.screen.modes.bracketed_paste,
-                            );
-                            if !bytes.is_empty()
-                                && let Err(e) = pty_write_all(&mut ps.pty, &bytes) {
-                                emux_log!("PTY write error: {}", e);
-                            }
+                        && let Some(ps) = app.panes.get_mut(&active_id)
+                    {
+                        let bytes =
+                            emux_term::input::encode_paste(&text, ps.screen.modes.bracketed_paste);
+                        if !bytes.is_empty()
+                            && let Err(e) = pty_write_all(&mut ps.pty, &bytes)
+                        {
+                            emux_log!("PTY write error: {}", e);
                         }
+                    }
                     for ps in app.panes.values_mut() {
                         ps.damage.mark_all();
                     }
@@ -289,23 +297,29 @@ fn run_event_loop<W: Write>(
                 }
                 Event::FocusGained => {
                     if let Some(active_id) = app.session.active_tab().active_pane_id()
-                        && let Some(ps) = app.panes.get_mut(&active_id) {
-                            let bytes = emux_term::input::encode_focus(true, ps.screen.modes.focus_tracking);
-                            if !bytes.is_empty()
-                                && let Err(e) = pty_write_all(&mut ps.pty, &bytes) {
-                                emux_log!("PTY write error: {}", e);
-                            }
+                        && let Some(ps) = app.panes.get_mut(&active_id)
+                    {
+                        let bytes =
+                            emux_term::input::encode_focus(true, ps.screen.modes.focus_tracking);
+                        if !bytes.is_empty()
+                            && let Err(e) = pty_write_all(&mut ps.pty, &bytes)
+                        {
+                            emux_log!("PTY write error: {}", e);
                         }
+                    }
                 }
                 Event::FocusLost => {
                     if let Some(active_id) = app.session.active_tab().active_pane_id()
-                        && let Some(ps) = app.panes.get_mut(&active_id) {
-                            let bytes = emux_term::input::encode_focus(false, ps.screen.modes.focus_tracking);
-                            if !bytes.is_empty()
-                                && let Err(e) = pty_write_all(&mut ps.pty, &bytes) {
-                                emux_log!("PTY write error: {}", e);
-                            }
+                        && let Some(ps) = app.panes.get_mut(&active_id)
+                    {
+                        let bytes =
+                            emux_term::input::encode_focus(false, ps.screen.modes.focus_tracking);
+                        if !bytes.is_empty()
+                            && let Err(e) = pty_write_all(&mut ps.pty, &bytes)
+                        {
+                            emux_log!("PTY write error: {}", e);
                         }
+                    }
                 }
                 _ => {}
             }

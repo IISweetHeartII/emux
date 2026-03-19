@@ -43,11 +43,19 @@ trait PenAssertions {
     }
 
     fn assert_reverse(&self, expected: bool) {
-        assert_eq!(self.screen().pen().reverse, expected, "pen reverse mismatch");
+        assert_eq!(
+            self.screen().pen().reverse,
+            expected,
+            "pen reverse mismatch"
+        );
     }
 
     fn assert_strikethrough(&self, expected: bool) {
-        assert_eq!(self.screen().pen().strikethrough, expected, "pen strikethrough mismatch");
+        assert_eq!(
+            self.screen().pen().strikethrough,
+            expected,
+            "pen strikethrough mismatch"
+        );
     }
 
     fn assert_fg(&self, color: Color) {
@@ -402,9 +410,9 @@ fn cursor_cht() {
 fn cursor_cbt() {
     let mut t = TestTerminal::new(80, 25);
     t.push(b"\x1b[65G"); // col 64
-    t.push(b"\x1b[Z");   // back one tab -> col 56
+    t.push(b"\x1b[Z"); // back one tab -> col 56
     t.assert_cursor(0, 56);
-    t.push(b"\x1b[2Z");  // back two tabs -> col 40
+    t.push(b"\x1b[2Z"); // back two tabs -> col 40
     t.assert_cursor(0, 40);
 }
 

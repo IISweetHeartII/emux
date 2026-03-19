@@ -12,12 +12,12 @@ pub mod tab;
 pub mod window;
 
 pub use domain::{Domain, DomainParseError};
-pub use project::ProjectInfo;
 pub use layout::{LayoutEngine, LayoutNode, PanePosition, SplitDirection};
 pub use layout_template::{LayoutTemplate, PaneTemplate, SplitDir};
 pub use pane::{Pane, PaneConstraints, PaneId, PaneSize};
+pub use project::ProjectInfo;
 pub use search::{GlobalSearchResult, SearchLineResult, search_lines, search_session, search_text};
 pub use session::{Session, SessionId};
-pub use swap_config::{parse_swap_layout_toml, LayoutParseError};
+pub use swap_config::{LayoutParseError, parse_swap_layout_toml};
 pub use tab::{FloatingPane, FocusDirection, ResizeDirection, SwapLayout, Tab, TabId};
 pub use window::{Window, WindowId};

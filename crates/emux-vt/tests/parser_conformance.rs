@@ -85,10 +85,7 @@ fn basic_text() {
     let mut parser = Parser::new();
     let mut p = TestPerformer::new();
     parser.advance(&mut p, b"hello");
-    assert_eq!(
-        p.actions,
-        prints(&['h', 'e', 'l', 'l', 'o']),
-    );
+    assert_eq!(p.actions, prints(&['h', 'e', 'l', 'l', 'o']),);
 }
 
 // =========================================================================
@@ -150,10 +147,7 @@ fn c1_7bit_esc_0x43() {
     // The actual parser emits EscDispatch here (not Execute 0x83).
     // This is a design choice — libvterm maps ESC+letter to C1 controls,
     // but the standard VT parser emits EscDispatch for the ESC sequence.
-    assert_eq!(
-        p.actions,
-        vec![esc(&[], 0x43)],
-    );
+    assert_eq!(p.actions, vec![esc(&[], 0x43)],);
 }
 
 #[test]
@@ -163,10 +157,7 @@ fn c1_7bit_esc_0x59() {
     let mut parser = Parser::new();
     let mut p = TestPerformer::new();
     parser.advance(&mut p, &[0x1b, 0x59]);
-    assert_eq!(
-        p.actions,
-        vec![esc(&[], 0x59)],
-    );
+    assert_eq!(p.actions, vec![esc(&[], 0x59)],);
 }
 
 // =========================================================================
@@ -255,13 +246,7 @@ fn c0_in_escape_interrupts_and_continues() {
     let mut parser = Parser::new();
     let mut p = TestPerformer::new();
     parser.advance(&mut p, &[0x1b, b'(', b'\n', b'X']);
-    assert_eq!(
-        p.actions,
-        vec![
-            Action::Execute(0x0a),
-            esc(&[b'('], b'X'),
-        ],
-    );
+    assert_eq!(p.actions, vec![Action::Execute(0x0a), esc(&[b'('], b'X'),],);
 }
 
 // =========================================================================
@@ -366,11 +351,7 @@ fn csi_mixed_with_text() {
     parser.advance(&mut p, b"A\x1b[8mB");
     assert_eq!(
         p.actions,
-        vec![
-            Action::Print('A'),
-            csi(0x6d, "8", &[]),
-            Action::Print('B'),
-        ],
+        vec![Action::Print('A'), csi(0x6d, "8", &[]), Action::Print('B'),],
     );
 }
 
@@ -396,10 +377,7 @@ fn csi_split_write_text_then_esc_bracket() {
     let mut parser = Parser::new();
     let mut p = TestPerformer::new();
     parser.advance(&mut p, b"foo\x1b[");
-    assert_eq!(
-        p.drain(),
-        prints(&['f', 'o', 'o']),
-    );
+    assert_eq!(p.drain(), prints(&['f', 'o', 'o']),);
     parser.advance(&mut p, b"4b");
     assert_eq!(p.actions, vec![csi(0x62, "4", &[])]);
 }
@@ -452,10 +430,7 @@ fn c0_in_csi_interrupts_and_continues() {
     parser.advance(&mut p, b"\x1b[12\n;3X");
     assert_eq!(
         p.actions,
-        vec![
-            Action::Execute(0x0a),
-            csi(0x58, "12;3", &[]),
-        ],
+        vec![Action::Execute(0x0a), csi(0x58, "12;3", &[]),],
     );
 }
 
@@ -489,10 +464,7 @@ fn osc_st_7bit_terminated() {
     // The parser currently handles ESC as an "anywhere" transition that
     // cancels the current state. So ESC inside OSC cancels the OSC and
     // starts Escape state, then '\' dispatches as EscDispatch.
-    assert_eq!(
-        actions,
-        vec![esc(&[], b'\\')],
-    );
+    assert_eq!(actions, vec![esc(&[], b'\\')],);
 }
 
 #[test]
@@ -518,10 +490,7 @@ fn osc_bel_no_semicolon() {
     let mut parser = Parser::new();
     let mut p = TestPerformer::new();
     parser.advance(&mut p, b"\x1b]1234\x07");
-    assert_eq!(
-        p.actions,
-        vec![Action::OscDispatch(vec![b"1234".to_vec()])],
-    );
+    assert_eq!(p.actions, vec![Action::OscDispatch(vec![b"1234".to_vec()])],);
 }
 
 #[test]
@@ -664,11 +633,7 @@ fn del_inside_text() {
     parser.advance(&mut p, b"AB\x7fC");
     assert_eq!(
         p.actions,
-        vec![
-            Action::Print('A'),
-            Action::Print('B'),
-            Action::Print('C'),
-        ],
+        vec![Action::Print('A'), Action::Print('B'), Action::Print('C'),],
     );
 }
 
@@ -682,10 +647,7 @@ fn utf8_ascii() {
     let mut parser = Parser::new();
     let mut p = TestPerformer::new();
     parser.advance(&mut p, b"123");
-    assert_eq!(
-        p.actions,
-        prints(&['1', '2', '3']),
-    );
+    assert_eq!(p.actions, prints(&['1', '2', '3']),);
 }
 
 #[test]
@@ -857,13 +819,7 @@ fn sub_cancels_escape() {
     let mut parser = Parser::new();
     let mut p = TestPerformer::new();
     parser.advance(&mut p, &[0x1b, b'(', 0x1a, b'A']);
-    assert_eq!(
-        p.actions,
-        vec![
-            Action::Execute(0x1a),
-            Action::Print('A'),
-        ],
-    );
+    assert_eq!(p.actions, vec![Action::Execute(0x1a), Action::Print('A'),],);
 }
 
 #[test]
@@ -881,13 +837,7 @@ fn multiple_csi_sequences() {
     let mut parser = Parser::new();
     let mut p = TestPerformer::new();
     parser.advance(&mut p, b"\x1b[1m\x1b[2m");
-    assert_eq!(
-        p.actions,
-        vec![
-            csi(0x6d, "1", &[]),
-            csi(0x6d, "2", &[]),
-        ],
-    );
+    assert_eq!(p.actions, vec![csi(0x6d, "1", &[]), csi(0x6d, "2", &[]),],);
 }
 
 #[test]

@@ -6,7 +6,7 @@
 //! the public `emux_term::input` API directly, which exercises the exact
 //! code path used by the event loop.
 
-use emux_term::input::{encode_key, Key, Modifiers};
+use emux_term::input::{Key, Modifiers, encode_key};
 
 // ---------------------------------------------------------------------------
 // Basic character keys
@@ -14,25 +14,53 @@ use emux_term::input::{encode_key, Key, Modifiers};
 
 #[test]
 fn translate_key_char_a() {
-    let bytes = encode_key(Key::Char('a'), Modifiers::none(), false, false, false, false);
+    let bytes = encode_key(
+        Key::Char('a'),
+        Modifiers::none(),
+        false,
+        false,
+        false,
+        false,
+    );
     assert_eq!(bytes, b"a");
 }
 
 #[test]
 fn translate_key_char_z() {
-    let bytes = encode_key(Key::Char('z'), Modifiers::none(), false, false, false, false);
+    let bytes = encode_key(
+        Key::Char('z'),
+        Modifiers::none(),
+        false,
+        false,
+        false,
+        false,
+    );
     assert_eq!(bytes, b"z");
 }
 
 #[test]
 fn translate_key_char_space() {
-    let bytes = encode_key(Key::Char(' '), Modifiers::none(), false, false, false, false);
+    let bytes = encode_key(
+        Key::Char(' '),
+        Modifiers::none(),
+        false,
+        false,
+        false,
+        false,
+    );
     assert_eq!(bytes, b" ");
 }
 
 #[test]
 fn translate_key_char_unicode() {
-    let bytes = encode_key(Key::Char('\u{4e16}'), Modifiers::none(), false, false, false, false);
+    let bytes = encode_key(
+        Key::Char('\u{4e16}'),
+        Modifiers::none(),
+        false,
+        false,
+        false,
+        false,
+    );
     let expected = "\u{4e16}".as_bytes().to_vec();
     assert_eq!(bytes, expected);
 }
@@ -103,25 +131,53 @@ fn translate_key_arrow_down_app_cursor() {
 
 #[test]
 fn translate_key_ctrl_c() {
-    let bytes = encode_key(Key::Char('c'), Modifiers::ctrl(), false, false, false, false);
+    let bytes = encode_key(
+        Key::Char('c'),
+        Modifiers::ctrl(),
+        false,
+        false,
+        false,
+        false,
+    );
     assert_eq!(bytes, vec![0x03]); // ETX
 }
 
 #[test]
 fn translate_key_ctrl_a() {
-    let bytes = encode_key(Key::Char('a'), Modifiers::ctrl(), false, false, false, false);
+    let bytes = encode_key(
+        Key::Char('a'),
+        Modifiers::ctrl(),
+        false,
+        false,
+        false,
+        false,
+    );
     assert_eq!(bytes, vec![0x01]); // SOH
 }
 
 #[test]
 fn translate_key_ctrl_z() {
-    let bytes = encode_key(Key::Char('z'), Modifiers::ctrl(), false, false, false, false);
+    let bytes = encode_key(
+        Key::Char('z'),
+        Modifiers::ctrl(),
+        false,
+        false,
+        false,
+        false,
+    );
     assert_eq!(bytes, vec![0x1A]); // SUB
 }
 
 #[test]
 fn translate_key_ctrl_d() {
-    let bytes = encode_key(Key::Char('d'), Modifiers::ctrl(), false, false, false, false);
+    let bytes = encode_key(
+        Key::Char('d'),
+        Modifiers::ctrl(),
+        false,
+        false,
+        false,
+        false,
+    );
     assert_eq!(bytes, vec![0x04]); // EOT
 }
 
@@ -147,7 +203,11 @@ fn translate_key_alt_x() {
 
 #[test]
 fn translate_key_ctrl_alt_a() {
-    let mods = Modifiers { shift: false, alt: true, ctrl: true };
+    let mods = Modifiers {
+        shift: false,
+        alt: true,
+        ctrl: true,
+    };
     let bytes = encode_key(Key::Char('a'), mods, false, false, false, false);
     assert_eq!(bytes, vec![0x1B, 0x01]);
 }
@@ -176,13 +236,27 @@ fn translate_key_shift_tab() {
 
 #[test]
 fn translate_key_backspace() {
-    let bytes = encode_key(Key::Backspace, Modifiers::none(), false, false, false, false);
+    let bytes = encode_key(
+        Key::Backspace,
+        Modifiers::none(),
+        false,
+        false,
+        false,
+        false,
+    );
     assert_eq!(bytes, vec![0x7F]);
 }
 
 #[test]
 fn translate_key_ctrl_backspace() {
-    let bytes = encode_key(Key::Backspace, Modifiers::ctrl(), false, false, false, false);
+    let bytes = encode_key(
+        Key::Backspace,
+        Modifiers::ctrl(),
+        false,
+        false,
+        false,
+        false,
+    );
     assert_eq!(bytes, vec![0x08]);
 }
 
@@ -340,7 +414,7 @@ fn translate_key_end_app_cursor() {
 fn search_finds_matches_in_screen_text() {
     // Verify that the search module can find matches in text that would come
     // from Screen::row_text() — this is the path used by the search keybinding.
-    use emux_term::search::{find_all_matches, SearchState, next_match_index, prev_match_index};
+    use emux_term::search::{SearchState, find_all_matches, next_match_index, prev_match_index};
 
     let rows = vec![
         "$ cargo build".into(),
@@ -376,7 +450,7 @@ fn search_finds_matches_in_screen_text() {
 
 #[test]
 fn search_empty_query_clears_state() {
-    use emux_term::search::{find_all_matches, SearchState};
+    use emux_term::search::{SearchState, find_all_matches};
 
     let rows = vec!["hello world".into()];
     let matches = find_all_matches(&rows, "", false);

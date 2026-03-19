@@ -5,11 +5,11 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use emux_ipc::{codec, ClientMessage, ServerMessage};
+use emux_ipc::{ClientMessage, ServerMessage, codec};
 use emux_mux::Session;
 
-use crate::{ClientId, DaemonError};
 use crate::persistence;
+use crate::{ClientId, DaemonError};
 
 /// A connected client and its stream.
 struct ClientConnection {
@@ -63,9 +63,7 @@ impl DaemonServer {
                 match std::os::unix::net::UnixStream::connect(&socket_path) {
                     Ok(_) => {
                         // Something is listening — refuse.
-                        return Err(DaemonError::SocketExists(
-                            socket_path.display().to_string(),
-                        ));
+                        return Err(DaemonError::SocketExists(socket_path.display().to_string()));
                     }
                     Err(_) => {
                         // Stale socket; remove it.
@@ -114,9 +112,8 @@ impl DaemonServer {
         // Try to restore from a saved snapshot; fall back to a fresh session.
         let snapshot_path = persistence::default_snapshot_path(session_name);
         let session = if let Some(ref snap_path) = snapshot_path {
-            persistence::load_session(snap_path).unwrap_or_else(|_| {
-                Session::new(session_name, 80, 24)
-            })
+            persistence::load_session(snap_path)
+                .unwrap_or_else(|_| Session::new(session_name, 80, 24))
         } else {
             Session::new(session_name, 80, 24)
         };
@@ -284,10 +281,7 @@ impl DaemonServer {
     }
 
     /// Read a [`ClientMessage`] from a specific client (blocking).
-    pub fn recv_from_client(
-        &mut self,
-        client_id: ClientId,
-    ) -> Result<ClientMessage, DaemonError> {
+    pub fn recv_from_client(&mut self, client_id: ClientId) -> Result<ClientMessage, DaemonError> {
         let conn = self
             .clients
             .iter_mut()
@@ -341,8 +335,7 @@ impl DaemonServer {
 
     /// Rename the session and move the socket file accordingly.
     pub fn rename_session(&mut self, new_name: &str) -> Result<(), DaemonError> {
-        let new_socket_path =
-            std::env::temp_dir().join(format!("emux-test-{new_name}"));
+        let new_socket_path = std::env::temp_dir().join(format!("emux-test-{new_name}"));
 
         #[cfg(unix)]
         {

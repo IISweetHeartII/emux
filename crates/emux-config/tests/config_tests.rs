@@ -2,7 +2,7 @@ use std::io::Write;
 use std::thread;
 use std::time::Duration;
 
-use emux_config::{load_from_path, merge_with_defaults, Config, ConfigWatcher, KeyBindings, Theme};
+use emux_config::{Config, ConfigWatcher, KeyBindings, Theme, load_from_path, merge_with_defaults};
 
 #[test]
 fn default_theme_has_correct_colors() {
@@ -219,11 +219,7 @@ fn all_default_keybindings_are_non_empty() {
         ("toggle_float", &keys.toggle_float),
     ];
     for (name, value) in &bindings {
-        assert!(
-            !value.is_empty(),
-            "keybinding '{}' must not be empty",
-            name
-        );
+        assert!(!value.is_empty(), "keybinding '{}' must not be empty", name);
     }
 }
 
@@ -277,7 +273,9 @@ fn config_roundtrip_with_custom_values() {
 
 #[test]
 fn merge_empty_partial_preserves_all_defaults() {
-    let empty: toml::Value = "".parse::<toml::Value>().unwrap_or(toml::Value::Table(Default::default()));
+    let empty: toml::Value = ""
+        .parse::<toml::Value>()
+        .unwrap_or(toml::Value::Table(Default::default()));
     let cfg = merge_with_defaults(empty);
     let default_cfg = Config::default();
 
@@ -382,7 +380,10 @@ fn config_watcher_detects_change() {
     let mut watcher = ConfigWatcher::new(path.clone());
 
     // First check: no change since we just constructed the watcher.
-    assert!(watcher.check().is_none(), "no change expected on first check");
+    assert!(
+        watcher.check().is_none(),
+        "no change expected on first check"
+    );
 
     // Wait a tiny bit so the mtime differs, then write new config.
     thread::sleep(Duration::from_millis(50));

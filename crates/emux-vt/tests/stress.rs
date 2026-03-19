@@ -41,7 +41,9 @@ fn stress_1mb_random_data() {
     let size = 1024 * 1024; // 1 MB
     let mut data = Vec::with_capacity(size);
     for _ in 0..size {
-        rng_state = rng_state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        rng_state = rng_state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         data.push((rng_state >> 33) as u8);
     }
 
@@ -57,9 +59,10 @@ fn stress_1mb_random_data() {
 
     // Verify parser recovers and can process normal input after stress
     parser.advance(&mut performer, b"\x1b[1m");
-    let has_csi = performer.actions.iter().any(|a| {
-        matches!(a, Action::CsiDispatch { action: b'm', .. })
-    });
+    let has_csi = performer
+        .actions
+        .iter()
+        .any(|a| matches!(a, Action::CsiDispatch { action: b'm', .. }));
     assert!(
         has_csi,
         "parser should recover and correctly parse CSI after 1MB random data"
@@ -74,12 +77,20 @@ fn stress_all_c0_controls() {
 
     let data: Vec<u8> = (0x00..=0x1Fu8).collect();
     // Repeat many times
-    let repeated: Vec<u8> = data.iter().copied().cycle().take(data.len() * 1000).collect();
+    let repeated: Vec<u8> = data
+        .iter()
+        .copied()
+        .cycle()
+        .take(data.len() * 1000)
+        .collect();
     parser.advance(&mut performer, &repeated);
 
     // All C0 bytes should produce Execute actions
     assert!(
-        performer.actions.iter().all(|a| matches!(a, Action::Execute(_))),
+        performer
+            .actions
+            .iter()
+            .all(|a| matches!(a, Action::Execute(_))),
         "C0 controls should only produce Execute actions"
     );
 
@@ -87,9 +98,10 @@ fn stress_all_c0_controls() {
 
     // Verify parser recovers and can process normal input
     parser.advance(&mut performer, b"\x1b[1m");
-    let has_csi = performer.actions.iter().any(|a| {
-        matches!(a, Action::CsiDispatch { action: b'm', .. })
-    });
+    let has_csi = performer
+        .actions
+        .iter()
+        .any(|a| matches!(a, Action::CsiDispatch { action: b'm', .. }));
     assert!(has_csi, "parser should recover after C0 burst");
 }
 
@@ -105,7 +117,12 @@ fn stress_all_c1_controls() {
         data.push(byte);
     }
     // Repeat many times
-    let repeated: Vec<u8> = data.iter().copied().cycle().take(data.len() * 500).collect();
+    let repeated: Vec<u8> = data
+        .iter()
+        .copied()
+        .cycle()
+        .take(data.len() * 500)
+        .collect();
     parser.advance(&mut performer, &repeated);
 
     // Should produce actions (EscDispatch for each ESC+byte pair)
@@ -118,9 +135,10 @@ fn stress_all_c1_controls() {
 
     // Verify parser recovers and can process normal input
     parser.advance(&mut performer, b"\x1b[1m");
-    let has_csi = performer.actions.iter().any(|a| {
-        matches!(a, Action::CsiDispatch { action: b'm', .. })
-    });
+    let has_csi = performer
+        .actions
+        .iter()
+        .any(|a| matches!(a, Action::CsiDispatch { action: b'm', .. }));
     assert!(has_csi, "parser should recover after C1 burst");
 }
 
@@ -146,7 +164,10 @@ fn stress_max_osc_string() {
 
     // Verify at least one OscDispatch was emitted
     assert!(
-        performer.actions.iter().any(|a| matches!(a, Action::OscDispatch(_))),
+        performer
+            .actions
+            .iter()
+            .any(|a| matches!(a, Action::OscDispatch(_))),
         "expected OscDispatch action after long OSC string"
     );
 }
@@ -172,11 +193,17 @@ fn stress_large_dcs_payload() {
 
     // Should have DcsHook, many DcsPut, and DcsUnhook
     assert!(
-        performer.actions.iter().any(|a| matches!(a, Action::DcsHook { .. })),
+        performer
+            .actions
+            .iter()
+            .any(|a| matches!(a, Action::DcsHook { .. })),
         "expected DcsHook action"
     );
     assert!(
-        performer.actions.iter().any(|a| matches!(a, Action::DcsUnhook)),
+        performer
+            .actions
+            .iter()
+            .any(|a| matches!(a, Action::DcsUnhook)),
         "expected DcsUnhook action"
     );
 }
@@ -208,10 +235,14 @@ fn stress_rapid_state_transitions() {
 
     // Verify parser is still functional after rapid state transitions
     parser.advance(&mut performer, b"\x1b[1m");
-    let has_csi = performer.actions.iter().any(|a| {
-        matches!(a, Action::CsiDispatch { action: b'm', .. })
-    });
-    assert!(has_csi, "parser should recover after rapid state transitions");
+    let has_csi = performer
+        .actions
+        .iter()
+        .any(|a| matches!(a, Action::CsiDispatch { action: b'm', .. }));
+    assert!(
+        has_csi,
+        "parser should recover after rapid state transitions"
+    );
 }
 
 /// Verify the parser returns to ground state after any arbitrary sequence.
@@ -260,9 +291,10 @@ fn stress_recovery_to_ground_state() {
         parser.advance(&mut performer, b"\x1b[1m");
 
         // Should have received a CsiDispatch
-        let has_csi = performer.actions.iter().any(|a| {
-            matches!(a, Action::CsiDispatch { action: b'm', .. })
-        });
+        let has_csi = performer
+            .actions
+            .iter()
+            .any(|a| matches!(a, Action::CsiDispatch { action: b'm', .. }));
         assert!(
             has_csi,
             "parser did not recover to ground state after pathological input #{i}: {prefix:?}"
@@ -305,7 +337,12 @@ fn stress_utf8_edge_cases() {
     data.extend_from_slice(&[0xF4, 0x90, 0x80, 0x80]); // U+110000
 
     // Repeat many times
-    let repeated: Vec<u8> = data.iter().copied().cycle().take(data.len() * 500).collect();
+    let repeated: Vec<u8> = data
+        .iter()
+        .copied()
+        .cycle()
+        .take(data.len() * 500)
+        .collect();
     parser.advance(&mut performer, &repeated);
 
     // Should produce actions from valid UTF-8 sequences at minimum
@@ -318,9 +355,10 @@ fn stress_utf8_edge_cases() {
 
     // Verify parser recovers and can process normal input
     parser.advance(&mut performer, b"\x1b[1m");
-    let has_csi = performer.actions.iter().any(|a| {
-        matches!(a, Action::CsiDispatch { action: b'm', .. })
-    });
+    let has_csi = performer
+        .actions
+        .iter()
+        .any(|a| matches!(a, Action::CsiDispatch { action: b'm', .. }));
     assert!(has_csi, "parser should recover after UTF-8 edge cases");
 }
 
@@ -359,9 +397,11 @@ fn stress_csi_extreme_params() {
     parser.advance(&mut performer, &data);
 
     // Each CSI sequence should produce a CsiDispatch
-    let csi_count = performer.actions.iter().filter(|a| {
-        matches!(a, Action::CsiDispatch { action: b'm', .. })
-    }).count();
+    let csi_count = performer
+        .actions
+        .iter()
+        .filter(|a| matches!(a, Action::CsiDispatch { action: b'm', .. }))
+        .count();
     assert_eq!(csi_count, 10_000, "each repeated CSI should be dispatched");
 }
 
@@ -383,7 +423,9 @@ fn regression_osc_exceeds_64kb_is_bounded() {
     parser.advance(&mut performer, b"\x07");
 
     // OSC should have been dispatched (possibly truncated, but dispatched)
-    let has_osc = performer.actions.iter().any(|a| matches!(a, Action::OscDispatch(_)));
+    let has_osc = performer
+        .actions
+        .iter()
+        .any(|a| matches!(a, Action::OscDispatch(_)));
     assert!(has_osc, "OSC larger than 64KB should still be dispatched");
 }
-

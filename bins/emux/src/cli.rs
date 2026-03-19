@@ -119,12 +119,13 @@ pub(crate) struct SshArgs {
 /// Expected form: `emux ssh [user@]host[:port] [new [name] | attach [name] | list]`
 pub(crate) fn parse_ssh_args(args: &[String]) -> Result<SshArgs, AppError> {
     if args.is_empty() {
-        return Err("emux ssh: missing destination. Usage: emux ssh [user@]host[:port] [command]".into());
+        return Err(
+            "emux ssh: missing destination. Usage: emux ssh [user@]host[:port] [command]".into(),
+        );
     }
 
-    let domain = Domain::parse_remote(&args[0]).map_err(|e| {
-        AppError::Msg(format!("emux ssh: invalid destination '{}': {e}", args[0]))
-    })?;
+    let domain = Domain::parse_remote(&args[0])
+        .map_err(|e| AppError::Msg(format!("emux ssh: invalid destination '{}': {e}", args[0])))?;
 
     let subcmd = if args.len() < 2 {
         SshSubcommand::Attach { session: None }
@@ -165,14 +166,10 @@ pub(crate) fn cmd_ssh(args: &[String]) -> Result<(), AppError> {
         }
         SshSubcommand::New { ref session } => {
             let session_name = session.as_deref().unwrap_or("0");
-            eprintln!(
-                "emux: creating session '{session_name}' on {dest}..."
-            );
+            eprintln!("emux: creating session '{session_name}' on {dest}...");
             run_ssh_command(&ssh.domain, &["new", session_name])
         }
-        SshSubcommand::List => {
-            run_ssh_command(&ssh.domain, &["list"])
-        }
+        SshSubcommand::List => run_ssh_command(&ssh.domain, &["list"]),
     }
 }
 
@@ -200,14 +197,12 @@ fn run_ssh_command(domain: &Domain, emux_args: &[&str]) -> Result<(), AppError> 
         cmd.arg(arg);
     }
 
-    let status = cmd.status().map_err(|e| {
-        AppError::Msg(format!("failed to run ssh to {destination}: {e}"))
-    })?;
+    let status = cmd
+        .status()
+        .map_err(|e| AppError::Msg(format!("failed to run ssh to {destination}: {e}")))?;
 
     if !status.success() {
-        return Err(AppError::Msg(format!(
-            "ssh exited with status {status}"
-        )));
+        return Err(AppError::Msg(format!("ssh exited with status {status}")));
     }
     Ok(())
 }

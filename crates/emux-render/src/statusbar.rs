@@ -98,30 +98,94 @@ pub struct StatusBarTheme {
 impl Default for StatusBarTheme {
     fn default() -> Self {
         Self {
-            bar_bg: CtColor::Rgb { r: 0x08, g: 0x08, b: 0x08 },
+            bar_bg: CtColor::Rgb {
+                r: 0x08,
+                g: 0x08,
+                b: 0x08,
+            },
             // Session: dark on yellow (bold)
-            session_fg: CtColor::Rgb { r: 0x08, g: 0x08, b: 0x08 },
-            session_bg: CtColor::Rgb { r: 0xFF, g: 0xFF, b: 0x00 },
+            session_fg: CtColor::Rgb {
+                r: 0x08,
+                g: 0x08,
+                b: 0x08,
+            },
+            session_bg: CtColor::Rgb {
+                r: 0xFF,
+                g: 0xFF,
+                b: 0x00,
+            },
             // Active tab: dark on blue (bold)
-            active_tab_fg: CtColor::Rgb { r: 0x08, g: 0x08, b: 0x08 },
-            active_tab_bg: CtColor::Rgb { r: 0x00, g: 0xAF, b: 0xFF },
+            active_tab_fg: CtColor::Rgb {
+                r: 0x08,
+                g: 0x08,
+                b: 0x08,
+            },
+            active_tab_bg: CtColor::Rgb {
+                r: 0x00,
+                g: 0xAF,
+                b: 0xFF,
+            },
             // Inactive tab: gray on dark
-            inactive_tab_fg: CtColor::Rgb { r: 0x8A, g: 0x8A, b: 0x8A },
-            inactive_tab_bg: CtColor::Rgb { r: 0x08, g: 0x08, b: 0x08 },
+            inactive_tab_fg: CtColor::Rgb {
+                r: 0x8A,
+                g: 0x8A,
+                b: 0x8A,
+            },
+            inactive_tab_bg: CtColor::Rgb {
+                r: 0x08,
+                g: 0x08,
+                b: 0x08,
+            },
             // Notification tab: yellow blink
-            notify_tab_fg: CtColor::Rgb { r: 0xFF, g: 0xFF, b: 0x00 },
+            notify_tab_fg: CtColor::Rgb {
+                r: 0xFF,
+                g: 0xFF,
+                b: 0x00,
+            },
             // Right 1: gray on dark (info)
-            right1_fg: CtColor::Rgb { r: 0x8A, g: 0x8A, b: 0x8A },
-            right1_bg: CtColor::Rgb { r: 0x08, g: 0x08, b: 0x08 },
+            right1_fg: CtColor::Rgb {
+                r: 0x8A,
+                g: 0x8A,
+                b: 0x8A,
+            },
+            right1_bg: CtColor::Rgb {
+                r: 0x08,
+                g: 0x08,
+                b: 0x08,
+            },
             // Right 2: white on red (time)
-            right2_fg: CtColor::Rgb { r: 0xE4, g: 0xE4, b: 0xE4 },
-            right2_bg: CtColor::Rgb { r: 0xD7, g: 0x00, b: 0x00 },
+            right2_fg: CtColor::Rgb {
+                r: 0xE4,
+                g: 0xE4,
+                b: 0xE4,
+            },
+            right2_bg: CtColor::Rgb {
+                r: 0xD7,
+                g: 0x00,
+                b: 0x00,
+            },
             // Right 3: dark on white (host)
-            right3_fg: CtColor::Rgb { r: 0x08, g: 0x08, b: 0x08 },
-            right3_bg: CtColor::Rgb { r: 0xE4, g: 0xE4, b: 0xE4 },
+            right3_fg: CtColor::Rgb {
+                r: 0x08,
+                g: 0x08,
+                b: 0x08,
+            },
+            right3_bg: CtColor::Rgb {
+                r: 0xE4,
+                g: 0xE4,
+                b: 0xE4,
+            },
             // Borders
-            border_active: CtColor::Rgb { r: 0x00, g: 0xAF, b: 0xFF },
-            border_inactive: CtColor::Rgb { r: 0x30, g: 0x30, b: 0x30 },
+            border_active: CtColor::Rgb {
+                r: 0x00,
+                g: 0xAF,
+                b: 0xFF,
+            },
+            border_inactive: CtColor::Rgb {
+                r: 0x30,
+                g: 0x30,
+                b: 0x30,
+            },
         }
     }
 }
@@ -129,16 +193,23 @@ impl Default for StatusBarTheme {
 /// Render the status bar into a list of (ContentStyle, String) spans.
 ///
 /// The total width of all spans equals exactly `width` columns.
-pub fn render_statusbar(info: &StatusBarInfo, theme: &StatusBarTheme, width: usize) -> Vec<(ContentStyle, String)> {
+pub fn render_statusbar(
+    info: &StatusBarInfo,
+    theme: &StatusBarTheme,
+    width: usize,
+) -> Vec<(ContentStyle, String)> {
     let mut left_segments = Vec::new();
     let mut right_segments = Vec::new();
 
     // ── Left: session name ──
-    left_segments.push(Segment::new(
-        format!(" ❐ {} ", info.session_name),
-        theme.session_fg,
-        theme.session_bg,
-    ).bold());
+    left_segments.push(
+        Segment::new(
+            format!(" ❐ {} ", info.session_name),
+            theme.session_fg,
+            theme.session_bg,
+        )
+        .bold(),
+    );
 
     // ── Left: tabs ──
     for tab in &info.tabs {
@@ -175,14 +246,23 @@ pub fn render_statusbar(info: &StatusBarInfo, theme: &StatusBarTheme, width: usi
     ));
 
     // ── Right: hostname ──
-    right_segments.push(Segment::new(
-        format!(" {} ", info.hostname),
-        theme.right3_fg,
-        theme.right3_bg,
-    ).bold());
+    right_segments.push(
+        Segment::new(
+            format!(" {} ", info.hostname),
+            theme.right3_fg,
+            theme.right3_bg,
+        )
+        .bold(),
+    );
 
     // ── Assemble into spans ──
-    assemble_bar(&left_segments, &right_segments, theme, width, info.powerline)
+    assemble_bar(
+        &left_segments,
+        &right_segments,
+        theme,
+        width,
+        info.powerline,
+    )
 }
 
 /// Assemble left and right segments into a full-width status bar.
@@ -244,7 +324,11 @@ fn assemble_bar(
     for (i, seg) in right.iter().enumerate() {
         // Separator before segment
         if powerline {
-            let prev_bg = if i == 0 { theme.bar_bg } else { right[i - 1].bg };
+            let prev_bg = if i == 0 {
+                theme.bar_bg
+            } else {
+                right[i - 1].bg
+            };
             let mut sep_style = ContentStyle::new();
             sep_style.foreground_color = Some(seg.bg);
             sep_style.background_color = Some(prev_bg);
@@ -321,7 +405,8 @@ fn display_width(s: &str) -> usize {
                 || ('\u{FE30}'..='\u{FE6F}').contains(&c)    // CJK Compatibility Forms
                 || ('\u{FF01}'..='\u{FF60}').contains(&c)    // Fullwidth Forms
                 || ('\u{1F000}'..='\u{1FFFF}').contains(&c)  // Emoji and symbols
-                || ('\u{20000}'..='\u{2FFFF}').contains(&c)  // CJK Unified Ext B+
+                || ('\u{20000}'..='\u{2FFFF}').contains(&c)
+            // CJK Unified Ext B+
             {
                 2
             } else {
@@ -332,8 +417,16 @@ fn display_width(s: &str) -> usize {
 }
 
 /// Render a horizontal pane border line.
-pub fn render_border(width: usize, active: bool, theme: &StatusBarTheme) -> Vec<(ContentStyle, String)> {
-    let color = if active { theme.border_active } else { theme.border_inactive };
+pub fn render_border(
+    width: usize,
+    active: bool,
+    theme: &StatusBarTheme,
+) -> Vec<(ContentStyle, String)> {
+    let color = if active {
+        theme.border_active
+    } else {
+        theme.border_inactive
+    };
     let mut style = ContentStyle::new();
     style.foreground_color = Some(color);
     vec![(style, "─".repeat(width))]
@@ -347,9 +440,24 @@ mod tests {
         StatusBarInfo {
             session_name: "dev".into(),
             tabs: vec![
-                TabInfo { name: "bash".into(), index: 0, has_notification: false, pane_count: 1 },
-                TabInfo { name: "vim".into(), index: 1, has_notification: false, pane_count: 1 },
-                TabInfo { name: "htop".into(), index: 2, has_notification: true, pane_count: 2 },
+                TabInfo {
+                    name: "bash".into(),
+                    index: 0,
+                    has_notification: false,
+                    pane_count: 1,
+                },
+                TabInfo {
+                    name: "vim".into(),
+                    index: 1,
+                    has_notification: false,
+                    pane_count: 1,
+                },
+                TabInfo {
+                    name: "htop".into(),
+                    index: 2,
+                    has_notification: true,
+                    pane_count: 2,
+                },
             ],
             active_tab: 1,
             notification_count: 1,

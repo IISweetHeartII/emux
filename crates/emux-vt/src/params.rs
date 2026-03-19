@@ -51,7 +51,10 @@ impl Params {
             b'0'..=b'9' => {
                 self.has_current = true;
                 self.trailing_sep = false;
-                self.current = self.current.saturating_mul(10).saturating_add((byte - b'0') as u32);
+                self.current = self
+                    .current
+                    .saturating_mul(10)
+                    .saturating_add((byte - b'0') as u32);
             }
             b';' => {
                 if (self.len as usize) < MAX_PARAMS {

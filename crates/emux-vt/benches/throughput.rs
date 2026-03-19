@@ -11,15 +11,15 @@ impl Performer for TestPerformer {
 fn build_mixed_input(size: usize) -> Vec<u8> {
     let fragments: &[&[u8]] = &[
         b"hello world ",
-        b"\x1b[31m",        // SGR: set foreground red
+        b"\x1b[31m", // SGR: set foreground red
         b"colored text ",
-        b"\x1b[0m",         // SGR: reset
-        b"\x1b[10;20H",     // CUP: move cursor
-        b"abcdefghij\r\n",  // text + CR LF
-        b"\x1b[2J",         // ED:  clear screen
-        b"\x1b[?25l",       // DECRST: hide cursor
+        b"\x1b[0m",        // SGR: reset
+        b"\x1b[10;20H",    // CUP: move cursor
+        b"abcdefghij\r\n", // text + CR LF
+        b"\x1b[2J",        // ED:  clear screen
+        b"\x1b[?25l",      // DECRST: hide cursor
         b"the quick brown fox jumps over the lazy dog ",
-        b"\x1b[?25h",       // DECSET: show cursor
+        b"\x1b[?25h", // DECSET: show cursor
     ];
 
     let mut buf = Vec::with_capacity(size);

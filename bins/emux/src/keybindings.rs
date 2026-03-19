@@ -145,9 +145,7 @@ pub(crate) fn matches_binding(key: &KeyEvent, binding: &Option<(KeyModifiers, Ke
         return false;
     }
     match (bind_code, &key.code) {
-        (KeyCode::Char(bc), KeyCode::Char(kc)) => {
-            bc.eq_ignore_ascii_case(kc)
-        }
+        (KeyCode::Char(bc), KeyCode::Char(kc)) => bc.eq_ignore_ascii_case(kc),
         _ => bind_code == &key.code,
     }
 }
@@ -207,19 +205,27 @@ pub(crate) fn handle_keybinding<W: Write>(
     }
     // Focus navigation
     if matches_binding(key, &bindings.focus_up) {
-        app.session.active_tab_mut().focus_direction(FocusDirection::Up);
+        app.session
+            .active_tab_mut()
+            .focus_direction(FocusDirection::Up);
         return Ok(Action::Consumed);
     }
     if matches_binding(key, &bindings.focus_down) {
-        app.session.active_tab_mut().focus_direction(FocusDirection::Down);
+        app.session
+            .active_tab_mut()
+            .focus_direction(FocusDirection::Down);
         return Ok(Action::Consumed);
     }
     if matches_binding(key, &bindings.focus_left) {
-        app.session.active_tab_mut().focus_direction(FocusDirection::Left);
+        app.session
+            .active_tab_mut()
+            .focus_direction(FocusDirection::Left);
         return Ok(Action::Consumed);
     }
     if matches_binding(key, &bindings.focus_right) {
-        app.session.active_tab_mut().focus_direction(FocusDirection::Right);
+        app.session
+            .active_tab_mut()
+            .focus_direction(FocusDirection::Right);
         return Ok(Action::Consumed);
     }
     // New tab
@@ -274,13 +280,21 @@ fn handle_search_key(app: &mut App, key: &KeyEvent) -> Result<Action, AppError> 
             run_search(app);
             return Ok(Action::Consumed);
         }
-        KeyCode::Char('n') if key.modifiers.is_empty() && !app.search_query.is_empty() && app.search_direction_active => {
+        KeyCode::Char('n')
+            if key.modifiers.is_empty()
+                && !app.search_query.is_empty()
+                && app.search_direction_active =>
+        {
             // Next match.
             app.search_state.current =
                 search::next_match_index(app.search_state.current, app.search_state.matches.len());
             return Ok(Action::Consumed);
         }
-        KeyCode::Char('N') if key.modifiers.contains(KeyModifiers::SHIFT) && !app.search_query.is_empty() && app.search_direction_active => {
+        KeyCode::Char('N')
+            if key.modifiers.contains(KeyModifiers::SHIFT)
+                && !app.search_query.is_empty()
+                && app.search_direction_active =>
+        {
             // Previous match.
             app.search_state.current =
                 search::prev_match_index(app.search_state.current, app.search_state.matches.len());
@@ -308,13 +322,14 @@ fn run_search(app: &mut App) {
 
     // Collect row texts from the active pane's screen.
     let texts: Vec<String> = if let Some(active_id) = app.session.active_tab().active_pane_id()
-        && let Some(ps) = app.panes.get(&active_id) {
-            (0..ps.screen.rows())
-                .map(|r| ps.screen.row_text(r))
-                .collect()
-        } else {
-            return;
-        };
+        && let Some(ps) = app.panes.get(&active_id)
+    {
+        (0..ps.screen.rows())
+            .map(|r| ps.screen.row_text(r))
+            .collect()
+    } else {
+        return;
+    };
 
     let matches = search::find_all_matches(&texts, &app.search_query, false);
     let current = if matches.is_empty() { None } else { Some(0) };

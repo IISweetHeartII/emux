@@ -12,25 +12,22 @@ use std::os::windows::io::FromRawHandle;
 use std::ptr;
 
 #[cfg(windows)]
-use windows_sys::Win32::Foundation::{
-    CloseHandle, BOOL, HANDLE, INVALID_HANDLE_VALUE, S_OK, TRUE,
-};
+use windows_sys::Win32::Foundation::{BOOL, CloseHandle, HANDLE, INVALID_HANDLE_VALUE, S_OK, TRUE};
 #[cfg(windows)]
 use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
 #[cfg(windows)]
 use windows_sys::Win32::Storage::FileSystem::{ReadFile, WriteFile};
 #[cfg(windows)]
 use windows_sys::Win32::System::Console::{
-    ClosePseudoConsole, CreatePseudoConsole, ResizePseudoConsole, COORD, HPCON,
+    COORD, ClosePseudoConsole, CreatePseudoConsole, HPCON, ResizePseudoConsole,
 };
 #[cfg(windows)]
 use windows_sys::Win32::System::Pipes::CreatePipe;
 #[cfg(windows)]
 use windows_sys::Win32::System::Threading::{
-    CreateProcessW, DeleteProcThreadAttributeList, GetExitCodeProcess,
-    InitializeProcThreadAttributeList, UpdateProcThreadAttribute,
-    EXTENDED_STARTUPINFO_PRESENT, PROCESS_INFORMATION, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
-    STARTUPINFOEXW,
+    CreateProcessW, DeleteProcThreadAttributeList, EXTENDED_STARTUPINFO_PRESENT,
+    GetExitCodeProcess, InitializeProcThreadAttributeList, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
+    PROCESS_INFORMATION, STARTUPINFOEXW, UpdateProcThreadAttribute,
 };
 
 #[cfg(windows)]
@@ -248,10 +245,7 @@ impl WinPty {
                     .as_ref()
                     .map(|b| b.as_ptr() as *const _)
                     .unwrap_or(ptr::null()),
-                cwd_w
-                    .as_ref()
-                    .map(|c| c.as_ptr())
-                    .unwrap_or(ptr::null()),
+                cwd_w.as_ref().map(|c| c.as_ptr()).unwrap_or(ptr::null()),
                 &si.StartupInfo,
                 &mut pi,
             );

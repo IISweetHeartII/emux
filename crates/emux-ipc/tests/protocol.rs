@@ -6,7 +6,7 @@
 
 use emux_ipc::codec::{self, CodecError};
 use emux_ipc::messages::{
-    ClientMessage, PaneEntry, ServerMessage, SplitDirection, PROTOCOL_VERSION,
+    ClientMessage, PROTOCOL_VERSION, PaneEntry, ServerMessage, SplitDirection,
 };
 use std::io::Cursor;
 
@@ -234,9 +234,7 @@ fn large_payload_64kb() {
 fn multiple_messages_in_sequence() {
     let messages: Vec<ClientMessage> = vec![
         ClientMessage::Ping,
-        ClientMessage::KeyInput {
-            data: vec![0x0d],
-        },
+        ClientMessage::KeyInput { data: vec![0x0d] },
         ClientMessage::Resize { cols: 80, rows: 24 },
         ClientMessage::Detach,
     ];

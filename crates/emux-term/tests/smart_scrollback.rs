@@ -61,7 +61,10 @@ fn search_backward_finds_previous_match() {
 
     let current = screen.current_match().expect("should have a current match");
     let sb_len = screen.grid.scrollback_len();
-    assert!(current.row < sb_len, "current match should be in scrollback");
+    assert!(
+        current.row < sb_len,
+        "current match should be in scrollback"
+    );
 }
 
 #[test]
@@ -134,7 +137,11 @@ fn search_case_insensitive() {
     write_str(&mut screen, "Error on line 3");
 
     let matches = screen.search_forward("Error", false);
-    assert_eq!(matches.len(), 3, "case-insensitive should find all 3 variants");
+    assert_eq!(
+        matches.len(),
+        3,
+        "case-insensitive should find all 3 variants"
+    );
 }
 
 #[test]
@@ -150,7 +157,11 @@ fn search_case_sensitive() {
     write_str(&mut screen, "Error on line 3");
 
     let matches = screen.search_forward("Error", true);
-    assert_eq!(matches.len(), 1, "case-sensitive should find only exact match");
+    assert_eq!(
+        matches.len(),
+        1,
+        "case-sensitive should find only exact match"
+    );
     assert_eq!(matches[0].row, 2);
     assert_eq!(matches[0].col, 0);
 }
@@ -229,7 +240,10 @@ fn search_highlights_current_match_distinctly() {
     // Navigate next and verify current changes
     let _ = screen.search_next();
     let new_idx = screen.search_state().as_ref().unwrap().current.unwrap();
-    assert_ne!(current_idx, new_idx, "current match index should change on navigation");
+    assert_ne!(
+        current_idx, new_idx,
+        "current match index should change on navigation"
+    );
 }
 
 // ---------------------------------------------------------------------------

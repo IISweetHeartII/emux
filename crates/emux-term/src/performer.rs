@@ -579,19 +579,20 @@ impl Screen {
                     let idx_str = std::str::from_utf8(&parts[1]).unwrap_or("");
                     let spec = std::str::from_utf8(&parts[2]).unwrap_or("");
                     if let Ok(idx) = idx_str.parse::<u16>()
-                        && idx < 256 {
-                            if spec == "?" {
-                                // Query: respond with current color
-                                let (r, g, b) = self.palette_color(idx as u8);
-                                let response = format!(
-                                    "\x1b]4;{};rgb:{:02x}{:02x}/{:02x}{:02x}/{:02x}{:02x}\x1b\\",
-                                    idx, r, r, g, g, b, b
-                                );
-                                self.response_buf.extend_from_slice(response.as_bytes());
-                            } else if let Some(rgb) = parse_color_spec(spec) {
-                                self.set_palette_color(idx as u8, rgb.0, rgb.1, rgb.2);
-                            }
+                        && idx < 256
+                    {
+                        if spec == "?" {
+                            // Query: respond with current color
+                            let (r, g, b) = self.palette_color(idx as u8);
+                            let response = format!(
+                                "\x1b]4;{};rgb:{:02x}{:02x}/{:02x}{:02x}/{:02x}{:02x}\x1b\\",
+                                idx, r, r, g, g, b, b
+                            );
+                            self.response_buf.extend_from_slice(response.as_bytes());
+                        } else if let Some(rgb) = parse_color_spec(spec) {
+                            self.set_palette_color(idx as u8, rgb.0, rgb.1, rgb.2);
                         }
+                    }
                 }
             }
             "8" => {
@@ -722,7 +723,7 @@ impl Screen {
     fn set_ansi_mode(&mut self, mode: u16, enable: bool) {
         match mode {
             4 => self.modes.insert = enable,   // IRM: insert/replace mode
-            20 => self.modes.newline = enable,  // LNM: linefeed/newline mode
+            20 => self.modes.newline = enable, // LNM: linefeed/newline mode
             _ => {}
         }
     }
@@ -764,8 +765,11 @@ impl Screen {
             }
             9 => {
                 // X10 mouse tracking
-                self.modes.mouse_tracking =
-                    if enable { MouseMode::X10 } else { MouseMode::None };
+                self.modes.mouse_tracking = if enable {
+                    MouseMode::X10
+                } else {
+                    MouseMode::None
+                };
             }
             // Start blinking cursor (12) — handled by display layer
             45 => {
@@ -791,18 +795,27 @@ impl Screen {
             }
             1000 => {
                 // Normal mouse tracking
-                self.modes.mouse_tracking =
-                    if enable { MouseMode::Normal } else { MouseMode::None };
+                self.modes.mouse_tracking = if enable {
+                    MouseMode::Normal
+                } else {
+                    MouseMode::None
+                };
             }
             1002 => {
                 // Button-event mouse tracking
-                self.modes.mouse_tracking =
-                    if enable { MouseMode::ButtonEvent } else { MouseMode::None };
+                self.modes.mouse_tracking = if enable {
+                    MouseMode::ButtonEvent
+                } else {
+                    MouseMode::None
+                };
             }
             1003 => {
                 // Any-event mouse tracking
-                self.modes.mouse_tracking =
-                    if enable { MouseMode::AnyEvent } else { MouseMode::None };
+                self.modes.mouse_tracking = if enable {
+                    MouseMode::AnyEvent
+                } else {
+                    MouseMode::None
+                };
             }
             1004 => {
                 // Focus tracking
@@ -1210,17 +1223,38 @@ mod tests {
         let mut s = Screen::new(80, 25);
 
         // Normal mode: arrow keys use CSI
-        let up = encode_key(Key::Up, Modifiers::none(), s.modes.application_cursor_keys, false, false, false);
+        let up = encode_key(
+            Key::Up,
+            Modifiers::none(),
+            s.modes.application_cursor_keys,
+            false,
+            false,
+            false,
+        );
         assert_eq!(up, b"\x1b[A");
 
         // Enable DECCKM
         feed(&mut s, b"\x1b[?1h");
-        let up = encode_key(Key::Up, Modifiers::none(), s.modes.application_cursor_keys, false, false, false);
+        let up = encode_key(
+            Key::Up,
+            Modifiers::none(),
+            s.modes.application_cursor_keys,
+            false,
+            false,
+            false,
+        );
         assert_eq!(up, b"\x1bOA");
 
         // Disable DECCKM
         feed(&mut s, b"\x1b[?1l");
-        let up = encode_key(Key::Up, Modifiers::none(), s.modes.application_cursor_keys, false, false, false);
+        let up = encode_key(
+            Key::Up,
+            Modifiers::none(),
+            s.modes.application_cursor_keys,
+            false,
+            false,
+            false,
+        );
         assert_eq!(up, b"\x1b[A");
     }
 
@@ -1424,7 +1458,10 @@ mod tests {
         let mut s = Screen::new(80, 25);
         feed(&mut s, b"\x1b]133;A\x07");
         assert_eq!(s.shell_marks.len(), 1);
-        assert_eq!(s.shell_marks[0].kind, crate::screen::ShellMarkKind::PromptStart);
+        assert_eq!(
+            s.shell_marks[0].kind,
+            crate::screen::ShellMarkKind::PromptStart
+        );
     }
 
     #[test]
@@ -1432,7 +1469,10 @@ mod tests {
         let mut s = Screen::new(80, 25);
         feed(&mut s, b"\x1b]133;B\x07");
         assert_eq!(s.shell_marks.len(), 1);
-        assert_eq!(s.shell_marks[0].kind, crate::screen::ShellMarkKind::CommandStart);
+        assert_eq!(
+            s.shell_marks[0].kind,
+            crate::screen::ShellMarkKind::CommandStart
+        );
     }
 
     #[test]
@@ -1440,7 +1480,10 @@ mod tests {
         let mut s = Screen::new(80, 25);
         feed(&mut s, b"\x1b]133;C\x07");
         assert_eq!(s.shell_marks.len(), 1);
-        assert_eq!(s.shell_marks[0].kind, crate::screen::ShellMarkKind::OutputStart);
+        assert_eq!(
+            s.shell_marks[0].kind,
+            crate::screen::ShellMarkKind::OutputStart
+        );
     }
 
     #[test]
@@ -1512,10 +1555,10 @@ mod tests {
     #[test]
     fn ris_resets_all_modes() {
         let mut s = Screen::new(80, 25);
-        feed(&mut s, b"\x1b[?1h");       // DECCKM
-        feed(&mut s, b"\x1b=");           // DECKPAM
-        feed(&mut s, b"\x1b[?1004h");     // focus tracking
-        feed(&mut s, b"\x1b[?2004h");     // bracketed paste
+        feed(&mut s, b"\x1b[?1h"); // DECCKM
+        feed(&mut s, b"\x1b="); // DECKPAM
+        feed(&mut s, b"\x1b[?1004h"); // focus tracking
+        feed(&mut s, b"\x1b[?2004h"); // bracketed paste
 
         assert!(s.modes.application_cursor_keys);
         assert!(s.modes.application_keypad);

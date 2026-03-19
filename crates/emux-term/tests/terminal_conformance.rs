@@ -231,8 +231,14 @@ fn print_with_hyperlink() {
     assert_eq!(t.cell(0, 0).c, 'A');
     assert_eq!(t.cell(0, 1).c, 'B');
     // Cells should have the hyperlink
-    assert_eq!(t.cell(0, 0).hyperlink.as_deref(), Some("http://example.com"));
-    assert_eq!(t.cell(0, 1).hyperlink.as_deref(), Some("http://example.com"));
+    assert_eq!(
+        t.cell(0, 0).hyperlink.as_deref(),
+        Some("http://example.com")
+    );
+    assert_eq!(
+        t.cell(0, 1).hyperlink.as_deref(),
+        Some("http://example.com")
+    );
 }
 
 #[test]
@@ -594,10 +600,10 @@ fn cursor_left_reverse_wrap() {
     // When cursor is at col 0 and backspace is pressed, it should wrap
     // to the last column of the previous line.
     let mut t = TestTerminal::new(5, 5);
-    t.push_str("\x1b[?7h");  // autowrap on
+    t.push_str("\x1b[?7h"); // autowrap on
     t.push_str("\x1b[?45h"); // reverse wrap on
     t.push_str("ABCDE"); // fills row 0, pending wrap
-    t.push_str("F");     // wraps to row 1, col 0 then writes F at col 0
+    t.push_str("F"); // wraps to row 1, col 0 then writes F at col 0
     assert_eq!(t.cursor(), (1, 1));
     // Now backspace twice: first back to col 0, then reverse wrap to row 0 col 4
     t.push(b"\x08\x08");
@@ -1384,8 +1390,8 @@ fn resize_with_reflow_and_saved_cursor() {
     // Save cursor at a position, then resize so reflow moves things around.
     // The saved cursor position should be adjusted accordingly.
     let mut t = TestTerminal::new(4, 3);
-    t.push_str("ABCD");  // fills row 0
-    t.push_str("EF");    // row 1, col 0-1
+    t.push_str("ABCD"); // fills row 0
+    t.push_str("EF"); // row 1, col 0-1
     // Cursor is at (1, 2). Save cursor here.
     t.push(b"\x1b7"); // DECSC
     assert!(t.screen.has_saved_cursor());
@@ -1396,7 +1402,10 @@ fn resize_with_reflow_and_saved_cursor() {
     t.screen.resize(2, 3);
     // Restore cursor and verify it's within bounds
     t.push(b"\x1b8"); // DECRC
-    assert!(t.cursor().1 < 2, "saved cursor col should be within new cols");
+    assert!(
+        t.cursor().1 < 2,
+        "saved cursor col should be within new cols"
+    );
 }
 
 #[test]

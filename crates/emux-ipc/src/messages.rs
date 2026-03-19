@@ -15,31 +15,60 @@ pub enum SplitDirection {
 pub enum ClientMessage {
     Ping,
     GetVersion,
-    KeyInput { data: Vec<u8> },
-    Resize { cols: u16, rows: u16 },
-    SpawnPane { direction: Option<String> },
-    KillPane { pane_id: u32 },
-    FocusPane { pane_id: u32 },
+    KeyInput {
+        data: Vec<u8>,
+    },
+    Resize {
+        cols: u16,
+        rows: u16,
+    },
+    SpawnPane {
+        direction: Option<String>,
+    },
+    KillPane {
+        pane_id: u32,
+    },
+    FocusPane {
+        pane_id: u32,
+    },
     Detach,
     ListSessions,
-    KillSession { name: String },
+    KillSession {
+        name: String,
+    },
 
     // -- Agent / AI team support --
-
     /// Split the focused pane. Returns `SpawnResult` with the new pane ID.
-    SplitPane { direction: SplitDirection, size: Option<u16> },
+    SplitPane {
+        direction: SplitDirection,
+        size: Option<u16>,
+    },
     /// Capture the visible content of a pane as text.
-    CapturePane { pane_id: u32 },
+    CapturePane {
+        pane_id: u32,
+    },
     /// Send text/keystrokes to a specific pane.
-    SendKeys { pane_id: u32, keys: String },
+    SendKeys {
+        pane_id: u32,
+        keys: String,
+    },
     /// List all panes with their IDs, titles, dimensions, and active state.
     ListPanes,
     /// Get detailed info about a specific pane.
-    GetPaneInfo { pane_id: u32 },
+    GetPaneInfo {
+        pane_id: u32,
+    },
     /// Resize a specific pane.
-    ResizePane { pane_id: u32, cols: u16, rows: u16 },
+    ResizePane {
+        pane_id: u32,
+        cols: u16,
+        rows: u16,
+    },
     /// Set the title of a pane.
-    SetPaneTitle { pane_id: u32, title: String },
+    SetPaneTitle {
+        pane_id: u32,
+        title: String,
+    },
 }
 
 /// Metadata about an active session returned by `ListSessions`.
@@ -77,19 +106,36 @@ pub struct PaneEntry {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ServerMessage {
     Pong,
-    Version { version: u32 },
-    Render { pane_id: u32, content: String },
-    SpawnResult { pane_id: u32 },
-    Error { message: String },
+    Version {
+        version: u32,
+    },
+    Render {
+        pane_id: u32,
+        content: String,
+    },
+    SpawnResult {
+        pane_id: u32,
+    },
+    Error {
+        message: String,
+    },
     Ack,
-    SessionList { sessions: Vec<SessionEntry> },
+    SessionList {
+        sessions: Vec<SessionEntry>,
+    },
 
     // -- Agent / AI team support --
-
     /// Response to `CapturePane`: the visible text content of the pane.
-    PaneCaptured { pane_id: u32, content: String },
+    PaneCaptured {
+        pane_id: u32,
+        content: String,
+    },
     /// Response to `ListPanes`: all panes in the active tab.
-    PaneList { panes: Vec<PaneEntry> },
+    PaneList {
+        panes: Vec<PaneEntry>,
+    },
     /// Response to `GetPaneInfo`: info about a single pane.
-    PaneInfo { pane: PaneEntry },
+    PaneInfo {
+        pane: PaneEntry,
+    },
 }

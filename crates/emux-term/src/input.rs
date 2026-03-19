@@ -51,25 +51,40 @@ impl Modifiers {
 
     /// Create a `Modifiers` with only Ctrl pressed.
     pub fn ctrl() -> Self {
-        Self { ctrl: true, ..Default::default() }
+        Self {
+            ctrl: true,
+            ..Default::default()
+        }
     }
 
     /// Create a `Modifiers` with only Alt pressed.
     pub fn alt() -> Self {
-        Self { alt: true, ..Default::default() }
+        Self {
+            alt: true,
+            ..Default::default()
+        }
     }
 
     /// Create a `Modifiers` with only Shift pressed.
     pub fn shift() -> Self {
-        Self { shift: true, ..Default::default() }
+        Self {
+            shift: true,
+            ..Default::default()
+        }
     }
 
     /// Compute the xterm modifier parameter value: 1 + shift*1 + alt*2 + ctrl*4.
     fn param(self) -> u8 {
         let mut v = 1u8;
-        if self.shift { v += 1; }
-        if self.alt { v += 2; }
-        if self.ctrl { v += 4; }
+        if self.shift {
+            v += 1;
+        }
+        if self.alt {
+            v += 2;
+        }
+        if self.ctrl {
+            v += 4;
+        }
         v
     }
 
@@ -318,14 +333,37 @@ fn encode_mouse_normal(event: MouseEvent) -> Vec<u8> {
         MouseEvent::ScrollUp { col, row } => (64 + 32, col, row),
         MouseEvent::ScrollDown { col, row } => (65 + 32, col, row),
     };
-    vec![0x1B, b'[', b'M', button_byte, (col as u8) + 33, (row as u8) + 33]
+    vec![
+        0x1B,
+        b'[',
+        b'M',
+        button_byte,
+        (col as u8) + 33,
+        (row as u8) + 33,
+    ]
 }
 
 /// Keypad key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KeypadKey {
-    Num0, Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9,
-    Decimal, Separator, Star, Plus, Minus, Slash, Enter, Equal,
+    Num0,
+    Num1,
+    Num2,
+    Num3,
+    Num4,
+    Num5,
+    Num6,
+    Num7,
+    Num8,
+    Num9,
+    Decimal,
+    Separator,
+    Star,
+    Plus,
+    Minus,
+    Slash,
+    Enter,
+    Equal,
 }
 
 /// Encode a keypad key press.

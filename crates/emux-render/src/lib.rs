@@ -7,9 +7,7 @@ pub mod text;
 
 use std::io::{self, Write};
 
-use crossterm::{
-    cursor as ct_cursor, style, QueueableCommand,
-};
+use crossterm::{QueueableCommand, cursor as ct_cursor, style};
 use emux_term::Screen;
 
 use crate::cursor::cursor_style;

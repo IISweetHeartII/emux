@@ -307,7 +307,10 @@ mod tests {
         {
             let tab = session.active_tab_mut();
             let fp_id = tab.new_floating_pane();
-            tab.floating_pane_mut(fp_id).unwrap().pane.push_scrollback("floating match");
+            tab.floating_pane_mut(fp_id)
+                .unwrap()
+                .pane
+                .push_scrollback("floating match");
         }
         let results = search_session(&session, "floating", false);
         assert_eq!(results.len(), 1);
@@ -320,13 +323,17 @@ mod tests {
         {
             let tab = session.active_tab_mut();
             let pid = tab.active_pane_id().unwrap();
-            tab.pane_mut(pid).unwrap().push_scrollback("needle in tab 0");
+            tab.pane_mut(pid)
+                .unwrap()
+                .push_scrollback("needle in tab 0");
         }
         session.new_tab("Tab 2");
         {
             let tab = session.active_tab_mut();
             let pid = tab.active_pane_id().unwrap();
-            tab.pane_mut(pid).unwrap().push_scrollback("needle in tab 1");
+            tab.pane_mut(pid)
+                .unwrap()
+                .push_scrollback("needle in tab 1");
         }
         let results = search_session(&session, "needle", false);
         assert_eq!(results.len(), 2);

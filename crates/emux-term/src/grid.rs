@@ -289,15 +289,11 @@ impl Grid {
         let right = right.min(self.cols.saturating_sub(1));
         for r in top..=bottom {
             // If left edge is a continuation cell (width==0), clear the head too
-            if left > 0 && left <= right
-                && self.lines[r].cells[left].width == 0
-            {
+            if left > 0 && left <= right && self.lines[r].cells[left].width == 0 {
                 self.lines[r].cells[left - 1].reset();
             }
             // If right edge is a wide char head (width==2), clear the continuation too
-            if right + 1 < self.cols
-                && self.lines[r].cells[right].width == 2
-            {
+            if right + 1 < self.cols && self.lines[r].cells[right].width == 2 {
                 self.lines[r].cells[right + 1].reset();
             }
             for c in left..=right {
@@ -494,8 +490,11 @@ impl Grid {
                 let mut len = cells.len();
                 while len > 0 {
                     let c = &cells[len - 1];
-                    if c.c != ' ' || c.width != 1 || !c.attrs.is_default()
-                        || c.fg != Color::Default || c.bg != Color::Default
+                    if c.c != ' '
+                        || c.width != 1
+                        || !c.attrs.is_default()
+                        || c.fg != Color::Default
+                        || c.bg != Color::Default
                         || c.hyperlink.is_some()
                     {
                         break;
@@ -612,9 +611,7 @@ impl Grid {
             self.lines[row].cells[col - 1].reset();
         }
         // Handle wide char boundary at end
-        if end < self.cols && end > col
-            && self.lines[row].cells[end - 1].width == 2
-        {
+        if end < self.cols && end > col && self.lines[row].cells[end - 1].width == 2 {
             self.lines[row].cells[end].reset();
         }
         for c in col..end {
@@ -709,7 +706,12 @@ impl Grid {
     /// Scroll the rectangular region [top, bottom) x [left, right) up by `count` lines.
     /// Only cells within [left, right) are shifted; cells outside are untouched.
     pub fn scroll_up_region(
-        &mut self, top: usize, bottom: usize, left: usize, right: usize, count: usize,
+        &mut self,
+        top: usize,
+        bottom: usize,
+        left: usize,
+        right: usize,
+        count: usize,
     ) {
         if bottom <= top || right <= left {
             return;
@@ -736,7 +738,12 @@ impl Grid {
     /// Scroll the rectangular region [top, bottom) x [left, right) down by `count` lines.
     /// Only cells within [left, right) are shifted; cells outside are untouched.
     pub fn scroll_down_region(
-        &mut self, top: usize, bottom: usize, left: usize, right: usize, count: usize,
+        &mut self,
+        top: usize,
+        bottom: usize,
+        left: usize,
+        right: usize,
+        count: usize,
     ) {
         if bottom <= top || right <= left {
             return;
@@ -763,7 +770,11 @@ impl Grid {
     /// Insert `count` blank cells at (row, col), shifting existing cells right.
     /// Cells shifted past `right_bound` (exclusive) are lost. (ICH with margin)
     pub fn insert_cells_bounded(
-        &mut self, row: usize, col: usize, count: usize, right_bound: usize,
+        &mut self,
+        row: usize,
+        col: usize,
+        count: usize,
+        right_bound: usize,
     ) {
         let right_bound = right_bound.min(self.cols);
         if col >= right_bound {
@@ -777,7 +788,11 @@ impl Grid {
             cells[i] = cells[i - count].clone();
         }
         // Clear the inserted cells
-        for cell in cells.iter_mut().take((col + count).min(right_bound)).skip(col) {
+        for cell in cells
+            .iter_mut()
+            .take((col + count).min(right_bound))
+            .skip(col)
+        {
             *cell = Cell::default();
         }
     }
@@ -785,7 +800,11 @@ impl Grid {
     /// Delete `count` cells at (row, col), shifting remaining cells left.
     /// Blank cells are inserted at the right bound. (DCH with margin)
     pub fn delete_cells_bounded(
-        &mut self, row: usize, col: usize, count: usize, right_bound: usize,
+        &mut self,
+        row: usize,
+        col: usize,
+        count: usize,
+        right_bound: usize,
     ) {
         let right_bound = right_bound.min(self.cols);
         if col >= right_bound {

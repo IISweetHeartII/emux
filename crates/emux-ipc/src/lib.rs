@@ -4,6 +4,8 @@ pub mod codec;
 pub mod messages;
 pub mod transport;
 
-pub use codec::{decode, encode, read_message, write_message, CodecError};
-pub use messages::{ClientMessage, PaneEntry, ServerMessage, SessionEntry, SplitDirection, PROTOCOL_VERSION};
+pub use codec::{CodecError, decode, encode, read_message, write_message};
+pub use messages::{
+    ClientMessage, PROTOCOL_VERSION, PaneEntry, ServerMessage, SessionEntry, SplitDirection,
+};
 pub use transport::{Listener, ReadWrite, SshStream, Transport, TransportError};

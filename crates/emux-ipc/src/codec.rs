@@ -2,8 +2,8 @@
 //!
 //! Wire format: `[4-byte LE length][serde_json payload]`
 
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::fmt;
 use std::io::{self, Read, Write};
 

@@ -64,16 +64,32 @@ fn default_palette() -> Vec<(u8, u8, u8)> {
     let mut p = Vec::with_capacity(256);
     // Standard ANSI colors 0-7
     let ansi = [
-        (0, 0, 0), (205, 0, 0), (0, 205, 0), (205, 205, 0),
-        (0, 0, 238), (205, 0, 205), (0, 205, 205), (229, 229, 229),
+        (0, 0, 0),
+        (205, 0, 0),
+        (0, 205, 0),
+        (205, 205, 0),
+        (0, 0, 238),
+        (205, 0, 205),
+        (0, 205, 205),
+        (229, 229, 229),
     ];
     // Bright ANSI colors 8-15
     let bright = [
-        (127, 127, 127), (255, 0, 0), (0, 255, 0), (255, 255, 0),
-        (92, 92, 255), (255, 0, 255), (0, 255, 255), (255, 255, 255),
+        (127, 127, 127),
+        (255, 0, 0),
+        (0, 255, 0),
+        (255, 255, 0),
+        (92, 92, 255),
+        (255, 0, 255),
+        (0, 255, 255),
+        (255, 255, 255),
     ];
-    for &c in &ansi { p.push(c); }
-    for &c in &bright { p.push(c); }
+    for &c in &ansi {
+        p.push(c);
+    }
+    for &c in &bright {
+        p.push(c);
+    }
     // 216-color cube (indices 16-231)
     for r in 0..6u8 {
         for g in 0..6u8 {
@@ -109,8 +125,7 @@ pub struct DamageRegion {
 }
 
 /// How damage events are coalesced before being reported.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DamageMode {
     /// Individual cell-level rectangles.
     #[default]
@@ -122,7 +137,6 @@ pub enum DamageMode {
     /// Track scroll operations as scroll damage.
     Scroll,
 }
-
 
 /// Erase display mode (ED).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -407,7 +421,8 @@ impl Screen {
         // Insert mode: shift cells right (bounded by right margin)
         if self.modes.insert {
             let right = self.effective_right();
-            self.grid.insert_cells_bounded(self.cursor.row, self.cursor.col, width as usize, right);
+            self.grid
+                .insert_cells_bounded(self.cursor.row, self.cursor.col, width as usize, right);
         }
 
         let row = self.cursor.row;
@@ -493,8 +508,11 @@ impl Screen {
             self.record_scroll_damage(self.scroll_top, self.scroll_bottom);
             if self.has_lr_margins() && self.cursor_in_lr_margins() {
                 self.grid.scroll_up_region(
-                    self.scroll_top, self.scroll_bottom,
-                    self.scroll_left, self.scroll_right, 1,
+                    self.scroll_top,
+                    self.scroll_bottom,
+                    self.scroll_left,
+                    self.scroll_right,
+                    1,
                 );
             } else {
                 self.grid.scroll_up(self.scroll_top, self.scroll_bottom, 1);
@@ -677,7 +695,13 @@ impl Screen {
                     self.clear_row_impl(r, selective);
                 }
                 self.record_damage(self.cursor.row, 0, self.cursor.col + 1);
-                self.clear_region_impl(self.cursor.row, 0, self.cursor.row, self.cursor.col, selective);
+                self.clear_region_impl(
+                    self.cursor.row,
+                    0,
+                    self.cursor.row,
+                    self.cursor.col,
+                    selective,
+                );
             }
             EraseDisplay::All => {
                 for r in 0..rows {
@@ -685,9 +709,7 @@ impl Screen {
                     self.clear_row_impl(r, selective);
                 }
             }
-            EraseDisplay::Scrollback => {
-                while self.grid.pop_scrollback().is_some() {}
-            }
+            EraseDisplay::Scrollback => while self.grid.pop_scrollback().is_some() {},
         }
     }
 
@@ -708,7 +730,13 @@ impl Screen {
         match mode {
             EraseLine::ToRight => {
                 self.record_damage(row, self.cursor.col, cols);
-                self.clear_region_impl(row, self.cursor.col, row, cols.saturating_sub(1), selective);
+                self.clear_region_impl(
+                    row,
+                    self.cursor.col,
+                    row,
+                    cols.saturating_sub(1),
+                    selective,
+                );
             }
             EraseLine::ToLeft => {
                 self.record_damage(row, 0, self.cursor.col + 1);
@@ -722,7 +750,14 @@ impl Screen {
     }
 
     /// Clear a rectangular region. If `selective`, skip protected cells.
-    fn clear_region_impl(&mut self, top: usize, left: usize, bottom: usize, right: usize, selective: bool) {
+    fn clear_region_impl(
+        &mut self,
+        top: usize,
+        left: usize,
+        bottom: usize,
+        right: usize,
+        selective: bool,
+    ) {
         if selective {
             let bottom = bottom.min(self.rows().saturating_sub(1));
             let right = right.min(self.cols().saturating_sub(1));
@@ -759,11 +794,15 @@ impl Screen {
         self.record_scroll_damage(self.scroll_top, self.scroll_bottom);
         if self.has_lr_margins() {
             self.grid.scroll_up_region(
-                self.scroll_top, self.scroll_bottom,
-                self.scroll_left, self.scroll_right, count,
+                self.scroll_top,
+                self.scroll_bottom,
+                self.scroll_left,
+                self.scroll_right,
+                count,
             );
         } else {
-            self.grid.scroll_up(self.scroll_top, self.scroll_bottom, count);
+            self.grid
+                .scroll_up(self.scroll_top, self.scroll_bottom, count);
         }
     }
 
@@ -772,11 +811,15 @@ impl Screen {
         self.record_scroll_damage(self.scroll_top, self.scroll_bottom);
         if self.has_lr_margins() {
             self.grid.scroll_down_region(
-                self.scroll_top, self.scroll_bottom,
-                self.scroll_left, self.scroll_right, count,
+                self.scroll_top,
+                self.scroll_bottom,
+                self.scroll_left,
+                self.scroll_right,
+                count,
             );
         } else {
-            self.grid.scroll_down(self.scroll_top, self.scroll_bottom, count);
+            self.grid
+                .scroll_down(self.scroll_top, self.scroll_bottom, count);
         }
     }
 
@@ -784,7 +827,8 @@ impl Screen {
     pub fn insert_lines(&mut self, count: usize) {
         let row = self.cursor.row;
         if row >= self.scroll_top && row < self.scroll_bottom {
-            self.grid.insert_lines(row, count, self.scroll_top, self.scroll_bottom);
+            self.grid
+                .insert_lines(row, count, self.scroll_top, self.scroll_bottom);
         }
         self.cursor.col = 0;
         self.pending_wrap = false;
@@ -794,7 +838,8 @@ impl Screen {
     pub fn delete_lines(&mut self, count: usize) {
         let row = self.cursor.row;
         if row >= self.scroll_top && row < self.scroll_bottom {
-            self.grid.delete_lines(row, count, self.scroll_top, self.scroll_bottom);
+            self.grid
+                .delete_lines(row, count, self.scroll_top, self.scroll_bottom);
         }
         self.cursor.col = 0;
         self.pending_wrap = false;
@@ -805,7 +850,8 @@ impl Screen {
         let right = self.effective_right();
         let row = self.cursor.row;
         self.record_damage(row, self.cursor.col, right);
-        self.grid.insert_cells_bounded(row, self.cursor.col, count, right);
+        self.grid
+            .insert_cells_bounded(row, self.cursor.col, count, right);
         self.pending_wrap = false;
     }
 
@@ -814,7 +860,8 @@ impl Screen {
         let right = self.effective_right();
         let row = self.cursor.row;
         self.record_damage(row, self.cursor.col, right);
-        self.grid.delete_cells_bounded(row, self.cursor.col, count, right);
+        self.grid
+            .delete_cells_bounded(row, self.cursor.col, count, right);
         self.pending_wrap = false;
     }
 
@@ -1047,8 +1094,7 @@ impl Screen {
         );
 
         // Apply cursor delta from reflow
-        let new_cursor_row = (self.cursor.row as isize + cursor_delta)
-            .max(0) as usize;
+        let new_cursor_row = (self.cursor.row as isize + cursor_delta).max(0) as usize;
         self.cursor.row = new_cursor_row;
 
         // Alt grid: no reflow (alt screen doesn't reflow)
@@ -1113,11 +1159,15 @@ impl Screen {
         if self.cursor.row == self.scroll_top {
             if self.has_lr_margins() && self.cursor_in_lr_margins() {
                 self.grid.scroll_down_region(
-                    self.scroll_top, self.scroll_bottom,
-                    self.scroll_left, self.scroll_right, 1,
+                    self.scroll_top,
+                    self.scroll_bottom,
+                    self.scroll_left,
+                    self.scroll_right,
+                    1,
                 );
             } else {
-                self.grid.scroll_down(self.scroll_top, self.scroll_bottom, 1);
+                self.grid
+                    .scroll_down(self.scroll_top, self.scroll_bottom, 1);
             }
         } else if self.cursor.row > 0 {
             self.cursor.row -= 1;
@@ -1213,11 +1263,13 @@ impl Screen {
     /// Compute effective foreground color: when bold_is_bright is enabled and
     /// the pen is bold, ANSI colors 0-7 map to their bright counterparts 8-15.
     fn effective_fg(&self) -> Color {
-        if self.bold_is_bright && self.pen.bold
+        if self.bold_is_bright
+            && self.pen.bold
             && let Color::Indexed(idx) = self.fg
-                && idx < 8 {
-                    return Color::Indexed(idx + 8);
-                }
+            && idx < 8
+        {
+            return Color::Indexed(idx + 8);
+        }
         self.fg
     }
 
@@ -1327,8 +1379,12 @@ impl Screen {
     /// All parameters are 1-based.
     pub fn copy_rect(
         &mut self,
-        src_top: usize, src_left: usize, src_bottom: usize, src_right: usize,
-        dst_top: usize, dst_left: usize,
+        src_top: usize,
+        src_left: usize,
+        src_bottom: usize,
+        src_right: usize,
+        dst_top: usize,
+        dst_left: usize,
     ) {
         let rows = self.rows();
         let cols = self.cols();
@@ -1634,10 +1690,7 @@ impl Screen {
         let current = if matches.is_empty() {
             None
         } else {
-            matches
-                .iter()
-                .position(|m| m.row >= sb_len)
-                .or(Some(0))
+            matches.iter().position(|m| m.row >= sb_len).or(Some(0))
         };
 
         let result = matches.clone();
@@ -1692,10 +1745,7 @@ impl Screen {
         let current = if matches.is_empty() {
             None
         } else {
-            matches
-                .iter()
-                .position(|m| m.row >= sb_len)
-                .or(Some(0))
+            matches.iter().position(|m| m.row >= sb_len).or(Some(0))
         };
 
         let result = matches.clone();
@@ -1788,7 +1838,8 @@ fn char_width(c: char) -> u8 {
         || cp == 0x2062  // Invisible Times
         || cp == 0x2063  // Invisible Separator
         || cp == 0x2064  // Invisible Plus
-        || cp == 0x180E  // Mongolian Vowel Separator
+        || cp == 0x180E
+    // Mongolian Vowel Separator
     {
         return 0;
     }
@@ -1798,7 +1849,8 @@ fn char_width(c: char) -> u8 {
         || (0x1AB0..=0x1AFF).contains(&cp) // Combining Diacritical Marks Extended
         || (0x1DC0..=0x1DFF).contains(&cp) // Combining Diacritical Marks Supplement
         || (0x20D0..=0x20FF).contains(&cp) // Combining Diacritical Marks for Symbols
-        || (0xFE20..=0xFE2F).contains(&cp) // Combining Half Marks
+        || (0xFE20..=0xFE2F).contains(&cp)
+    // Combining Half Marks
     {
         return 0;
     }
@@ -1819,7 +1871,8 @@ fn char_width(c: char) -> u8 {
         || (0xFFE0..=0xFFE6).contains(&cp) // Fullwidth Signs
         || (0x1F000..=0x1F9FF).contains(&cp) // Various emoji/symbols
         || (0x20000..=0x2FA1F).contains(&cp) // CJK Extension B and beyond
-        || (0x30000..=0x3134F).contains(&cp) // CJK Extension G
+        || (0x30000..=0x3134F).contains(&cp)
+    // CJK Extension G
     {
         return 2;
     }

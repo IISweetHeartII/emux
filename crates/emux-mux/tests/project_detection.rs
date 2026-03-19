@@ -120,8 +120,5 @@ fn test_pane_working_directory() {
 
     // Update to a new directory.
     pane.set_working_directory(PathBuf::from("/tmp"));
-    assert_eq!(
-        pane.working_directory(),
-        Some(std::path::Path::new("/tmp"))
-    );
+    assert_eq!(pane.working_directory(), Some(std::path::Path::new("/tmp")));
 }

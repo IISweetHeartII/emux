@@ -1,15 +1,19 @@
 //! Text rendering: cell-to-terminal-output conversion.
 
 use crossterm::style::{Attribute, Color as CtColor, ContentStyle};
-use emux_term::grid::{Cell, UnderlineStyle};
 use emux_term::Color;
+use emux_term::grid::{Cell, UnderlineStyle};
 
 /// Convert an `emux_term::Color` to a crossterm `Color`.
 pub fn color_to_crossterm(color: &Color) -> CtColor {
     match color {
         Color::Default => CtColor::Reset,
         Color::Indexed(idx) => CtColor::AnsiValue(*idx),
-        Color::Rgb(r, g, b) => CtColor::Rgb { r: *r, g: *g, b: *b },
+        Color::Rgb(r, g, b) => CtColor::Rgb {
+            r: *r,
+            g: *g,
+            b: *b,
+        },
     }
 }
 

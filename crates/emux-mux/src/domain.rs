@@ -94,7 +94,6 @@ impl Domain {
     }
 }
 
-
 impl fmt::Display for Domain {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

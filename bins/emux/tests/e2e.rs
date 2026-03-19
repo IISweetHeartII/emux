@@ -192,10 +192,8 @@ mod pty_tests {
             }
             std::thread::sleep(POLL_INTERVAL);
         }
-        let tail_start = find_char_boundary(
-            &accumulated,
-            accumulated.len().saturating_sub(WINDOW_SIZE),
-        );
+        let tail_start =
+            find_char_boundary(&accumulated, accumulated.len().saturating_sub(WINDOW_SIZE));
         let stripped = strip_ansi(&accumulated[tail_start..]);
         Err(format!(
             "timed out waiting for {:?} in stripped output (got {} bytes):\n{}",
@@ -532,7 +530,10 @@ mod pty_tests {
         drain_output(&mut pty, Duration::from_secs(3));
 
         // Verify still alive.
-        assert!(pty.is_alive(), "emux crashed during rapid input stress test");
+        assert!(
+            pty.is_alive(),
+            "emux crashed during rapid input stress test"
+        );
 
         // Ctrl-C to cancel anything, drain residual rendering, then verify alive.
         pty_send(&mut pty, b"\x03");
@@ -938,10 +939,7 @@ mod pty_tests {
 
         // Launch two background jobs that write output concurrently,
         // then wait for them to finish.
-        pty_send(
-            &mut pty,
-            b"(seq 1 50 &); (seq 100 150 &); wait\r",
-        );
+        pty_send(&mut pty, b"(seq 1 50 &); (seq 100 150 &); wait\r");
 
         // Give ample time for the concurrent output + redraws to settle.
         drain_output(&mut pty, Duration::from_secs(5));

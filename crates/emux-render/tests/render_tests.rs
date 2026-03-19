@@ -1,8 +1,8 @@
 use crossterm::style::{Attribute, Color as CtColor};
+use emux_render::Renderer;
 use emux_render::cursor::cursor_style;
 use emux_render::damage::DamageTracker;
 use emux_render::text::{cell_style, color_to_crossterm, render_row};
-use emux_render::Renderer;
 use emux_term::grid::{Cell, UnderlineStyle};
 use emux_term::{Color, CursorShape, Screen};
 
@@ -71,14 +71,21 @@ fn color_default_maps_to_reset() {
 
 #[test]
 fn color_indexed() {
-    assert_eq!(color_to_crossterm(&Color::Indexed(42)), CtColor::AnsiValue(42));
+    assert_eq!(
+        color_to_crossterm(&Color::Indexed(42)),
+        CtColor::AnsiValue(42)
+    );
 }
 
 #[test]
 fn color_rgb() {
     assert_eq!(
         color_to_crossterm(&Color::Rgb(10, 20, 30)),
-        CtColor::Rgb { r: 10, g: 20, b: 30 }
+        CtColor::Rgb {
+            r: 10,
+            g: 20,
+            b: 30
+        }
     );
 }
 
@@ -114,7 +121,10 @@ fn cell_style_colors() {
     cell.fg = Color::Rgb(255, 0, 0);
     cell.bg = Color::Indexed(7);
     let style = cell_style(&cell);
-    assert_eq!(style.foreground_color, Some(CtColor::Rgb { r: 255, g: 0, b: 0 }));
+    assert_eq!(
+        style.foreground_color,
+        Some(CtColor::Rgb { r: 255, g: 0, b: 0 })
+    );
     assert_eq!(style.background_color, Some(CtColor::AnsiValue(7)));
 }
 
@@ -122,11 +132,14 @@ fn cell_style_colors() {
 
 #[test]
 fn render_row_ascii() {
-    let cells: Vec<Cell> = "Hello".chars().map(|c| {
-        let mut cell = Cell::default();
-        cell.c = c;
-        cell
-    }).collect();
+    let cells: Vec<Cell> = "Hello"
+        .chars()
+        .map(|c| {
+            let mut cell = Cell::default();
+            cell.c = c;
+            cell
+        })
+        .collect();
     let spans = render_row(&cells, 5);
     let text: String = spans.iter().map(|(_, s)| s.as_str()).collect();
     assert_eq!(text, "Hello");
@@ -171,19 +184,28 @@ fn render_row_attributes_split_spans() {
 #[test]
 fn cursor_style_block() {
     use crossterm::cursor::SetCursorStyle;
-    assert!(matches!(cursor_style(CursorShape::Block), SetCursorStyle::SteadyBlock));
+    assert!(matches!(
+        cursor_style(CursorShape::Block),
+        SetCursorStyle::SteadyBlock
+    ));
 }
 
 #[test]
 fn cursor_style_bar() {
     use crossterm::cursor::SetCursorStyle;
-    assert!(matches!(cursor_style(CursorShape::Bar), SetCursorStyle::SteadyBar));
+    assert!(matches!(
+        cursor_style(CursorShape::Bar),
+        SetCursorStyle::SteadyBar
+    ));
 }
 
 #[test]
 fn cursor_style_underline() {
     use crossterm::cursor::SetCursorStyle;
-    assert!(matches!(cursor_style(CursorShape::Underline), SetCursorStyle::SteadyUnderScore));
+    assert!(matches!(
+        cursor_style(CursorShape::Underline),
+        SetCursorStyle::SteadyUnderScore
+    ));
 }
 
 // ── Renderer tests ───────────────────────────────────────────────────
@@ -200,7 +222,11 @@ fn renderer_render_to_buffer() {
     renderer.render(&mut buf, &screen).unwrap();
     // The buffer should contain escape sequences and the text "Hi"
     let output = String::from_utf8_lossy(&buf);
-    assert!(output.contains("Hi"), "output should contain 'Hi', got: {}", output);
+    assert!(
+        output.contains("Hi"),
+        "output should contain 'Hi', got: {}",
+        output
+    );
 }
 
 #[test]
@@ -365,8 +391,14 @@ fn cell_style_multiple_attributes() {
     assert!(style.attributes.has(Attribute::Bold));
     assert!(style.attributes.has(Attribute::Italic));
     assert!(style.attributes.has(Attribute::Underlined));
-    assert_eq!(style.foreground_color, Some(CtColor::Rgb { r: 0, g: 255, b: 0 }));
-    assert_eq!(style.background_color, Some(CtColor::Rgb { r: 0, g: 0, b: 255 }));
+    assert_eq!(
+        style.foreground_color,
+        Some(CtColor::Rgb { r: 0, g: 255, b: 0 })
+    );
+    assert_eq!(
+        style.background_color,
+        Some(CtColor::Rgb { r: 0, g: 0, b: 255 })
+    );
 }
 
 // ── Additional render_row tests ─────────────────────────────────────
@@ -374,11 +406,14 @@ fn cell_style_multiple_attributes() {
 #[test]
 fn render_row_padding_short_content() {
     // 3 cells of content but width=6, should pad with spaces
-    let cells: Vec<Cell> = "ABC".chars().map(|c| {
-        let mut cell = Cell::default();
-        cell.c = c;
-        cell
-    }).collect();
+    let cells: Vec<Cell> = "ABC"
+        .chars()
+        .map(|c| {
+            let mut cell = Cell::default();
+            cell.c = c;
+            cell
+        })
+        .collect();
     let spans = render_row(&cells, 6);
     let text: String = spans.iter().map(|(_, s)| s.as_str()).collect();
     assert_eq!(text, "ABC   ");
@@ -454,7 +489,11 @@ fn renderer_multiple_styled_cells() {
     let mut buf: Vec<u8> = Vec::new();
     renderer.render(&mut buf, &screen).unwrap();
     let output = String::from_utf8_lossy(&buf);
-    assert!(output.contains("Hello"), "output should contain 'Hello': {}", output);
+    assert!(
+        output.contains("Hello"),
+        "output should contain 'Hello': {}",
+        output
+    );
 }
 
 #[test]
@@ -502,7 +541,10 @@ fn renderer_after_erase_display() {
     renderer.render(&mut buf, &screen).unwrap();
     // After erasing, the rendered output should not contain the original text
     let output = String::from_utf8_lossy(&buf);
-    assert!(!output.contains("ABCDE"), "erased screen should not contain original text");
+    assert!(
+        !output.contains("ABCDE"),
+        "erased screen should not contain original text"
+    );
 }
 
 #[test]
@@ -516,7 +558,10 @@ fn renderer_wide_chars_via_screen() {
     let mut buf: Vec<u8> = Vec::new();
     renderer.render(&mut buf, &screen).unwrap();
     let output = String::from_utf8_lossy(&buf);
-    assert!(output.contains('\u{4e16}'), "output should contain wide char");
+    assert!(
+        output.contains('\u{4e16}'),
+        "output should contain wide char"
+    );
     assert!(output.contains('A'), "output should contain 'A'");
 }
 

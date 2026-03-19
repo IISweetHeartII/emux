@@ -83,17 +83,17 @@ pub fn parse_swap_layout_toml(toml_str: &str) -> Result<Vec<SwapLayout>, LayoutP
 
         // Validate pane count
         if let Some(count) = raw.pane_count
-            && count == 0 {
-                return Err(LayoutParseError::InvalidPaneCount { value: 0 });
-            }
+            && count == 0
+        {
+            return Err(LayoutParseError::InvalidPaneCount { value: 0 });
+        }
         if let Some(min) = min_panes
-            && min == 0 {
-                return Err(LayoutParseError::InvalidPaneCount { value: 0 });
-            }
+            && min == 0
+        {
+            return Err(LayoutParseError::InvalidPaneCount { value: 0 });
+        }
 
-        let name = raw
-            .name
-            .unwrap_or_else(|| format!("layout-{i}"));
+        let name = raw.name.unwrap_or_else(|| format!("layout-{i}"));
 
         // Determine the direction
         let direction = match raw.direction.as_deref() {

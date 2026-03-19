@@ -65,10 +65,7 @@ pub fn read_git_branch(git_dir: &Path) -> Option<String> {
 /// branch from `.git/HEAD`.
 pub fn detect_project(cwd: &Path) -> Option<ProjectInfo> {
     let root = find_git_root(cwd)?;
-    let name = root
-        .file_name()?
-        .to_str()?
-        .to_string();
+    let name = root.file_name()?.to_str()?.to_string();
 
     let git_dir = root.join(".git");
     // .git can be a file (worktrees / submodules) pointing elsewhere;
@@ -79,11 +76,7 @@ pub fn detect_project(cwd: &Path) -> Option<ProjectInfo> {
         None
     };
 
-    Some(ProjectInfo {
-        root,
-        name,
-        branch,
-    })
+    Some(ProjectInfo { root, name, branch })
 }
 
 #[cfg(test)]
@@ -101,7 +94,10 @@ mod tests {
     fn read_git_branch_symbolic_ref() {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("HEAD"), "ref: refs/heads/feature/cool\n").unwrap();
-        assert_eq!(read_git_branch(dir.path()), Some("feature/cool".to_string()));
+        assert_eq!(
+            read_git_branch(dir.path()),
+            Some("feature/cool".to_string())
+        );
     }
 
     #[test]

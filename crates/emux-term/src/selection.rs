@@ -325,10 +325,7 @@ mod tests {
     fn selection_single_row() {
         let grid = grid_with_lines(&["Hello, world!"], 20);
         let sb = grid.scrollback_len();
-        let mut sel = Selection::start(
-            SelectionPoint::new(sb, 0),
-            SelectionMode::Normal,
-        );
+        let mut sel = Selection::start(SelectionPoint::new(sb, 0), SelectionMode::Normal);
         sel.extend(SelectionPoint::new(sb, 4));
         sel.finalize();
         assert_eq!(sel.get_text(&grid), "Hello");
@@ -338,10 +335,7 @@ mod tests {
     fn selection_multi_row() {
         let grid = grid_with_lines(&["Line one", "Line two", "Line three"], 20);
         let sb = grid.scrollback_len();
-        let mut sel = Selection::start(
-            SelectionPoint::new(sb, 5),
-            SelectionMode::Normal,
-        );
+        let mut sel = Selection::start(SelectionPoint::new(sb, 5), SelectionMode::Normal);
         sel.extend(SelectionPoint::new(sb + 2, 3));
         sel.finalize();
         assert_eq!(sel.get_text(&grid), "one\nLine two\nLine");
@@ -351,10 +345,7 @@ mod tests {
     fn selection_rectangular() {
         let grid = grid_with_lines(&["ABCDE", "FGHIJ", "KLMNO"], 10);
         let sb = grid.scrollback_len();
-        let mut sel = Selection::start(
-            SelectionPoint::new(sb, 1),
-            SelectionMode::Rectangular,
-        );
+        let mut sel = Selection::start(SelectionPoint::new(sb, 1), SelectionMode::Rectangular);
         sel.extend(SelectionPoint::new(sb + 2, 3));
         sel.finalize();
         assert_eq!(sel.get_text(&grid), "BCD\nGHI\nLMN");
@@ -365,10 +356,7 @@ mod tests {
         let grid = grid_with_lines(&["Hello, world!"], 20);
         let sb = grid.scrollback_len();
         // Start at end, extend to beginning.
-        let mut sel = Selection::start(
-            SelectionPoint::new(sb, 4),
-            SelectionMode::Normal,
-        );
+        let mut sel = Selection::start(SelectionPoint::new(sb, 4), SelectionMode::Normal);
         sel.extend(SelectionPoint::new(sb, 0));
         sel.finalize();
         assert_eq!(sel.get_text(&grid), "Hello");
@@ -376,10 +364,7 @@ mod tests {
 
     #[test]
     fn selection_contains_normal() {
-        let sel = Selection::start(
-            SelectionPoint::new(1, 3),
-            SelectionMode::Normal,
-        );
+        let sel = Selection::start(SelectionPoint::new(1, 3), SelectionMode::Normal);
         let mut sel = sel;
         sel.extend(SelectionPoint::new(3, 5));
 
@@ -402,10 +387,7 @@ mod tests {
 
     #[test]
     fn selection_contains_rectangular() {
-        let mut sel = Selection::start(
-            SelectionPoint::new(1, 2),
-            SelectionMode::Rectangular,
-        );
+        let mut sel = Selection::start(SelectionPoint::new(1, 2), SelectionMode::Rectangular);
         sel.extend(SelectionPoint::new(3, 5));
 
         assert!(!sel.contains(0, 3));
@@ -440,10 +422,7 @@ mod tests {
         assert_eq!(sb, 1);
 
         // Select from scrollback into viewport
-        let mut sel = Selection::start(
-            SelectionPoint::new(0, 0),
-            SelectionMode::Normal,
-        );
+        let mut sel = Selection::start(SelectionPoint::new(0, 0), SelectionMode::Normal);
         sel.extend(SelectionPoint::new(sb, 2));
         sel.finalize();
         assert_eq!(sel.get_text(&grid), "Viewport 0\nNew");
@@ -451,10 +430,7 @@ mod tests {
 
     #[test]
     fn selection_state_transitions() {
-        let sel = Selection::start(
-            SelectionPoint::new(0, 0),
-            SelectionMode::Normal,
-        );
+        let sel = Selection::start(SelectionPoint::new(0, 0), SelectionMode::Normal);
         assert_eq!(sel.state, SelectionState::Selecting);
 
         let mut sel = sel;
@@ -522,10 +498,7 @@ mod tests {
     fn selection_empty_when_same_point() {
         let grid = grid_with_lines(&["Hello"], 10);
         let sb = grid.scrollback_len();
-        let mut sel = Selection::start(
-            SelectionPoint::new(sb, 2),
-            SelectionMode::Normal,
-        );
+        let mut sel = Selection::start(SelectionPoint::new(sb, 2), SelectionMode::Normal);
         sel.extend(SelectionPoint::new(sb, 2));
         sel.finalize();
         assert_eq!(sel.get_text(&grid), "l");

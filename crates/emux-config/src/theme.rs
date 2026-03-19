@@ -31,11 +31,21 @@ pub struct Theme {
     pub powerline: bool,
 }
 
-fn default_statusbar_bg() -> String { "#080808".into() }
-fn default_accent() -> String { "#00AFFF".into() }
-fn default_border_active() -> String { "#00AFFF".into() }
-fn default_border_inactive() -> String { "#303030".into() }
-fn default_powerline() -> bool { true }
+fn default_statusbar_bg() -> String {
+    "#080808".into()
+}
+fn default_accent() -> String {
+    "#00AFFF".into()
+}
+fn default_border_active() -> String {
+    "#00AFFF".into()
+}
+fn default_border_inactive() -> String {
+    "#303030".into()
+}
+fn default_powerline() -> bool {
+    true
+}
 
 impl Default for Theme {
     fn default() -> Self {

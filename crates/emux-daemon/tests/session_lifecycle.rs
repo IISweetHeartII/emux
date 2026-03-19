@@ -6,10 +6,10 @@
 
 use std::path::PathBuf;
 
+use emux_daemon::ClientId;
 use emux_daemon::client::DaemonClient;
 use emux_daemon::persistence;
 use emux_daemon::server::DaemonServer;
-use emux_daemon::ClientId;
 use emux_ipc::{ClientMessage, ServerMessage};
 
 /// Helper: generate a unique session name based on the test function name
@@ -38,7 +38,10 @@ fn temp_snapshot_dir() -> PathBuf {
 fn start_daemon_creates_socket() {
     let name = unique_name("creates-socket");
     let server = DaemonServer::start(&name).unwrap();
-    assert!(server.socket_path().exists(), "socket file should exist after start");
+    assert!(
+        server.socket_path().exists(),
+        "socket file should exist after start"
+    );
     server.shutdown();
 }
 
@@ -129,7 +132,10 @@ fn daemon_persists_after_all_clients_detach() {
     let client = DaemonClient::connect(server.socket_path()).unwrap();
     let client_id = server.accept_client().unwrap();
 
-    server.session_mut().active_tab_mut().split_pane(emux_mux::SplitDirection::Vertical);
+    server
+        .session_mut()
+        .active_tab_mut()
+        .split_pane(emux_mux::SplitDirection::Vertical);
     assert_eq!(server.session().active_tab().pane_count(), 2);
 
     client.detach();
@@ -163,7 +169,13 @@ fn client_attach_receives_viewport_sized_to_smallest() {
     let name = unique_name("viewport-smallest");
     let mut server = DaemonServer::start(&name).unwrap();
 
-    let reply1 = server.handle_message(ClientId(1), ClientMessage::Resize { cols: 120, rows: 40 });
+    let reply1 = server.handle_message(
+        ClientId(1),
+        ClientMessage::Resize {
+            cols: 120,
+            rows: 40,
+        },
+    );
     assert_eq!(reply1, ServerMessage::Ack);
     let reply2 = server.handle_message(ClientId(2), ClientMessage::Resize { cols: 80, rows: 24 });
     assert_eq!(reply2, ServerMessage::Ack);
@@ -300,8 +312,7 @@ fn snapshot_includes_scrollback() {
     assert!(contents.contains("all passed"));
 
     // Verify the structured snapshot has scrollback
-    let snap: persistence::SessionSnapshot =
-        serde_json::from_str(&contents).unwrap();
+    let snap: persistence::SessionSnapshot = serde_json::from_str(&contents).unwrap();
     assert!(!snap.tabs.is_empty());
     let tab_snap = &snap.tabs[0];
     assert!(!tab_snap.panes.is_empty());
@@ -317,7 +328,8 @@ fn snapshot_includes_scrollback() {
 fn restore_missing_file_returns_error() {
     // Attempting to restore from a nonexistent snapshot path should return a
     // clear error.
-    let result = persistence::load_session(std::path::Path::new("/tmp/nonexistent-emux-snapshot.json"));
+    let result =
+        persistence::load_session(std::path::Path::new("/tmp/nonexistent-emux-snapshot.json"));
     assert!(result.is_err());
 }
 
@@ -435,7 +447,9 @@ fn client_receives_render_updates() {
     let client_id = server.accept_client().unwrap();
 
     // Server sends an ack (simulating a render update notification).
-    server.send_to_client(client_id, &ServerMessage::Ack).unwrap();
+    server
+        .send_to_client(client_id, &ServerMessage::Ack)
+        .unwrap();
     let msg = client.recv().unwrap();
     assert_eq!(msg, ServerMessage::Ack);
 
@@ -452,7 +466,11 @@ fn client_sends_key_input_to_daemon() {
     let client_id = server.accept_client().unwrap();
 
     // Client sends key input.
-    client.send(ClientMessage::KeyInput { data: vec![b'a', b'b', b'c'] }).unwrap();
+    client
+        .send(ClientMessage::KeyInput {
+            data: vec![b'a', b'b', b'c'],
+        })
+        .unwrap();
     let msg = server.recv_from_client(client_id).unwrap();
     match msg {
         ClientMessage::KeyInput { ref data } => assert_eq!(data, &vec![b'a', b'b', b'c']),
@@ -564,8 +582,11 @@ fn snapshot_preserves_active_pane_id() {
     let mut server = DaemonServer::start(&name).unwrap();
 
     // Split to create a second pane; new pane becomes active.
-    let new_id = server.session_mut().active_tab_mut()
-        .split_pane(emux_mux::SplitDirection::Vertical).unwrap();
+    let new_id = server
+        .session_mut()
+        .active_tab_mut()
+        .split_pane(emux_mux::SplitDirection::Vertical)
+        .unwrap();
 
     let dir = temp_snapshot_dir();
     let snap_path = dir.join("session.json");
@@ -653,7 +674,8 @@ fn auto_save_marks_dirty_on_state_change() {
     let dir = temp_snapshot_dir();
     let snap_path = dir.join("dirty.json");
 
-    let mut server = DaemonServer::start_with_snapshot_path(&name, Some(snap_path.clone())).unwrap();
+    let mut server =
+        DaemonServer::start_with_snapshot_path(&name, Some(snap_path.clone())).unwrap();
 
     // Initially not dirty -- auto-save should be a no-op.
     assert!(!server.maybe_auto_save());
@@ -718,9 +740,12 @@ fn session_sharing_multiple_clients_see_same_state() {
     assert_eq!(server.client_count(), 2);
 
     // Client 1 requests a pane split.
-    let reply = server.handle_message(id1, ClientMessage::SpawnPane {
-        direction: Some("vertical".into()),
-    });
+    let reply = server.handle_message(
+        id1,
+        ClientMessage::SpawnPane {
+            direction: Some("vertical".into()),
+        },
+    );
     assert!(matches!(reply, ServerMessage::SpawnResult { .. }));
     assert_eq!(server.session().active_tab().pane_count(), 2);
 
@@ -777,13 +802,17 @@ fn session_sharing_input_from_any_client_is_handled() {
     let id2 = server.accept_client().unwrap();
 
     // Client 1 sends key input.
-    client1.send(ClientMessage::KeyInput { data: vec![b'x'] }).unwrap();
+    client1
+        .send(ClientMessage::KeyInput { data: vec![b'x'] })
+        .unwrap();
     let msg = server.recv_from_client(id1).unwrap();
     let reply = server.handle_message(id1, msg);
     assert_eq!(reply, ServerMessage::Ack);
 
     // Client 2 sends key input.
-    client2.send(ClientMessage::KeyInput { data: vec![b'y'] }).unwrap();
+    client2
+        .send(ClientMessage::KeyInput { data: vec![b'y'] })
+        .unwrap();
     let msg = server.recv_from_client(id2).unwrap();
     let reply = server.handle_message(id2, msg);
     assert_eq!(reply, ServerMessage::Ack);

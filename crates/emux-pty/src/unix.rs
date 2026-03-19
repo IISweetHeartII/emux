@@ -5,9 +5,9 @@ use std::io::{self, Read, Write};
 use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
 
 use nix::libc;
-use nix::pty::{forkpty, ForkptyResult, Winsize};
-use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
-use nix::unistd::{execvp, Pid};
+use nix::pty::{ForkptyResult, Winsize, forkpty};
+use nix::sys::wait::{WaitPidFlag, WaitStatus, waitpid};
+use nix::unistd::{Pid, execvp};
 
 use crate::cmdbuilder::CommandBuilder;
 
@@ -152,10 +152,11 @@ impl UnixPty {
 
                     // Change working directory if specified.
                     if let Some(cwd) = cmd.cwd_path()
-                        && std::env::set_current_dir(cwd).is_err() {
-                            // If we can't change directory, just continue with the
-                            // inherited cwd rather than failing silently.
-                        }
+                        && std::env::set_current_dir(cwd).is_err()
+                    {
+                        // If we can't change directory, just continue with the
+                        // inherited cwd rather than failing silently.
+                    }
 
                     // Set TERM if not already set by the caller.
                     if !cmd.env_map().contains_key("TERM") {
@@ -219,7 +220,10 @@ impl UnixPty {
 
     /// Check if the child process is still alive (non-blocking).
     pub fn is_alive(&self) -> bool {
-        matches!(waitpid(self.child_pid, Some(WaitPidFlag::WNOHANG)), Ok(WaitStatus::StillAlive))
+        matches!(
+            waitpid(self.child_pid, Some(WaitPidFlag::WNOHANG)),
+            Ok(WaitStatus::StillAlive)
+        )
     }
 
     /// Return a reference to the underlying master file.

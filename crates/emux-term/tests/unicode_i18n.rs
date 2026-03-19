@@ -156,7 +156,11 @@ fn emoji_flags() {
     // Cursor should have advanced (exact amount depends on whether they combine)
     assert!(col > 0, "cursor should advance after writing flag emoji");
     // First codepoint should be stored in cell 0
-    assert_ne!(t.cell(0, 0).c, ' ', "flag emoji should produce visible cell content");
+    assert_ne!(
+        t.cell(0, 0).c,
+        ' ',
+        "flag emoji should produce visible cell content"
+    );
 }
 
 #[test]
@@ -167,9 +171,16 @@ fn emoji_skin_tone() {
     let (row, col) = t.cursor();
     assert_eq!(row, 0);
     // Cursor should have advanced after writing emoji
-    assert!(col > 0, "cursor should advance after writing skin tone emoji");
+    assert!(
+        col > 0,
+        "cursor should advance after writing skin tone emoji"
+    );
     // First emoji character should be in the grid
-    assert_ne!(t.cell(0, 0).c, ' ', "emoji should produce visible cell content");
+    assert_ne!(
+        t.cell(0, 0).c,
+        ' ',
+        "emoji should produce visible cell content"
+    );
 }
 
 #[test]
@@ -182,9 +193,16 @@ fn emoji_zwj_family() {
     let (row, col) = t.cursor();
     assert_eq!(row, 0);
     // 4 emoji codepoints x 2 cols each = 8 cols (ZWJ is zero-width)
-    assert!(col > 0, "cursor should advance after writing ZWJ family emoji");
+    assert!(
+        col > 0,
+        "cursor should advance after writing ZWJ family emoji"
+    );
     // First emoji should be written to the grid
-    assert_eq!(t.cell(0, 0).c, '👨', "first emoji codepoint should be in cell 0");
+    assert_eq!(
+        t.cell(0, 0).c,
+        '👨',
+        "first emoji codepoint should be in cell 0"
+    );
 }
 
 #[test]
@@ -343,9 +361,9 @@ fn search_multiple_korean_matches() {
 fn insert_mode_with_wide_chars() {
     let mut t = TestTerminal::new(20, 3);
     t.push_str("ABCDEF");
-    t.push_str("\x1b[1G");    // move to col 0
-    t.push_str("\x1b[4h");    // enable insert mode
-    t.push_str("가");          // insert wide char, shifting existing content right
+    t.push_str("\x1b[1G"); // move to col 0
+    t.push_str("\x1b[4h"); // enable insert mode
+    t.push_str("가"); // insert wide char, shifting existing content right
     assert_eq!(t.cell(0, 0).c, '가');
     assert_eq!(t.cell(0, 0).width, 2);
     assert_eq!(t.cell(0, 2).c, 'A');
@@ -355,8 +373,8 @@ fn insert_mode_with_wide_chars() {
 fn delete_chars_with_wide_chars() {
     let mut t = TestTerminal::new(20, 3);
     t.push_str("가나다ABC");
-    t.push_str("\x1b[1G");    // move to col 0
-    t.push_str("\x1b[2P");    // DCH: delete 2 cells at cursor
+    t.push_str("\x1b[1G"); // move to col 0
+    t.push_str("\x1b[2P"); // DCH: delete 2 cells at cursor
     // After deleting 2 cells from the start, content shifts left
     // Should not corrupt wide char state
     let c = t.cell(0, 0);
@@ -369,9 +387,9 @@ fn cursor_movement_across_wide_chars() {
     t.push_str("가나다");
     // cursor is at (0, 6)
     assert_eq!(t.cursor(), (0, 6));
-    t.push_str("\x1b[1G");   // move to col 0
+    t.push_str("\x1b[1G"); // move to col 0
     assert_eq!(t.cursor(), (0, 0));
-    t.push_str("\x1b[4G");   // move to col 4 (0-based col 3)
+    t.push_str("\x1b[4G"); // move to col 4 (0-based col 3)
     assert_eq!(t.cursor(), (0, 3));
 }
 

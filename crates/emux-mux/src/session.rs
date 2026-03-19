@@ -194,12 +194,13 @@ impl Session {
     /// Toggle to the previously active tab.
     pub fn toggle_previous_tab(&mut self) -> bool {
         if let Some(prev) = self.previous_tab
-            && prev < self.tabs.len() {
-                let current = self.active_tab;
-                self.active_tab = prev;
-                self.previous_tab = Some(current);
-                return true;
-            }
+            && prev < self.tabs.len()
+        {
+            let current = self.active_tab;
+            self.active_tab = prev;
+            self.previous_tab = Some(current);
+            return true;
+        }
         false
     }
 
@@ -286,7 +287,12 @@ impl Session {
         // Create a new tab (it will have its own initial pane)
         let tab_id = self.next_tab_id;
         self.next_tab_id += 1;
-        let new_tab = Tab::new(tab_id, format!("Tab {}", tab_id + 1), self.size.cols, self.size.rows);
+        let new_tab = Tab::new(
+            tab_id,
+            format!("Tab {}", tab_id + 1),
+            self.size.cols,
+            self.size.rows,
+        );
         // Insert new tab to the right of the active tab
         let insert_pos = self.active_tab + 1;
         self.tabs.insert(insert_pos, new_tab);

@@ -20,16 +20,24 @@ fn session_resize_updates_all_tabs_and_panes() {
 
     // Split panes in tab 0
     session.switch_tab(0);
-    session.active_tab_mut().split_pane(SplitDirection::Vertical);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical);
 
     // Split panes in tab 1
     session.switch_tab(1);
-    session.active_tab_mut().split_pane(SplitDirection::Horizontal);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Horizontal);
 
     // Split panes in tab 2
     session.switch_tab(2);
-    session.active_tab_mut().split_pane(SplitDirection::Vertical);
-    session.active_tab_mut().split_pane(SplitDirection::Horizontal);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Horizontal);
 
     // Resize the session
     session.resize(120, 40);
@@ -63,15 +71,22 @@ fn session_resize_updates_all_tabs_and_panes() {
 #[test]
 fn session_resize_pane_sizes_sum_to_total() {
     let mut session = Session::new("test", 80, 24);
-    session.active_tab_mut().split_pane(SplitDirection::Vertical);
-    session.active_tab_mut().split_pane(SplitDirection::Vertical);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical);
 
     session.resize(120, 40);
 
     let positions = session.active_tab().compute_positions();
     // For a purely vertical split, all panes share the same rows, cols sum to total
     let total_cols: usize = positions.iter().map(|(_, p)| p.cols).sum();
-    assert_eq!(total_cols, 120, "vertical split cols should sum to total width");
+    assert_eq!(
+        total_cols, 120,
+        "vertical split cols should sum to total width"
+    );
     for (_, pos) in &positions {
         assert_eq!(pos.rows, 40);
     }
@@ -80,14 +95,21 @@ fn session_resize_pane_sizes_sum_to_total() {
 #[test]
 fn session_resize_horizontal_split_rows_sum_to_total() {
     let mut session = Session::new("test", 80, 24);
-    session.active_tab_mut().split_pane(SplitDirection::Horizontal);
-    session.active_tab_mut().split_pane(SplitDirection::Horizontal);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Horizontal);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Horizontal);
 
     session.resize(100, 30);
 
     let positions = session.active_tab().compute_positions();
     let total_rows: usize = positions.iter().map(|(_, p)| p.rows).sum();
-    assert_eq!(total_rows, 30, "horizontal split rows should sum to total height");
+    assert_eq!(
+        total_rows, 30,
+        "horizontal split rows should sum to total height"
+    );
     for (_, pos) in &positions {
         assert_eq!(pos.cols, 100);
     }
@@ -97,9 +119,15 @@ fn session_resize_horizontal_split_rows_sum_to_total() {
 fn session_resize_smaller_clamps_pane_sizes() {
     let mut session = Session::new("test", 80, 24);
     // 3 vertical splits
-    session.active_tab_mut().split_pane(SplitDirection::Vertical);
-    session.active_tab_mut().split_pane(SplitDirection::Vertical);
-    session.active_tab_mut().split_pane(SplitDirection::Vertical);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical);
 
     // Resize much smaller
     session.resize(20, 10);
@@ -202,7 +230,10 @@ fn tab_lifecycle_switch_out_of_bounds_fails() {
     let mut session = Session::new("test", 80, 24);
     session.new_tab("Tab 2");
 
-    assert!(!session.switch_tab(5), "switching to non-existent tab should fail");
+    assert!(
+        !session.switch_tab(5),
+        "switching to non-existent tab should fail"
+    );
     // Active tab should not change
     assert_eq!(session.active_tab_index(), 1);
 }
@@ -256,8 +287,12 @@ fn tab_lifecycle_panes_independent_across_tabs() {
 
     // Split panes in tab 0
     session.switch_tab(0);
-    session.active_tab_mut().split_pane(SplitDirection::Vertical);
-    session.active_tab_mut().split_pane(SplitDirection::Horizontal);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Vertical);
+    session
+        .active_tab_mut()
+        .split_pane(SplitDirection::Horizontal);
     assert_eq!(session.active_tab().pane_count(), 3);
 
     // Tab 1 should still have 1 pane

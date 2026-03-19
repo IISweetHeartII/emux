@@ -194,7 +194,9 @@ impl Tab {
             }
         }
 
-        let positions = self.layout.compute_positions(self.size.cols, self.size.rows);
+        let positions = self
+            .layout
+            .compute_positions(self.size.cols, self.size.rows);
         if let Some((_, pos)) = positions.iter().find(|(id, _)| *id == pane_id) {
             match direction {
                 SplitDirection::Vertical => pos.cols >= MIN_PANE_COLS * 2,
@@ -223,8 +225,13 @@ impl Tab {
         self.next_pane_id += 1;
 
         // Compute the new pane's size based on the split
-        let positions = self.layout.compute_positions(self.size.cols, self.size.rows);
-        let active_pos = positions.iter().find(|(id, _)| *id == active).map(|(_, p)| *p)?;
+        let positions = self
+            .layout
+            .compute_positions(self.size.cols, self.size.rows);
+        let active_pos = positions
+            .iter()
+            .find(|(id, _)| *id == active)
+            .map(|(_, p)| *p)?;
 
         let (new_cols, new_rows) = match direction {
             SplitDirection::Horizontal => {
@@ -326,16 +333,17 @@ impl Tab {
             return false;
         }
         if let Some(active) = self.active_pane
-            && let Some(pos) = ids.iter().position(|&id| id == active) {
-                let next = (pos + 1) % ids.len();
-                let next_id = ids[next];
-                self.active_pane = Some(next_id);
-                // Bring floating pane to front when focused
-                if self.floating_panes.iter().any(|fp| fp.pane.id() == next_id) {
-                    self.bring_floating_to_front(next_id);
-                }
-                return true;
+            && let Some(pos) = ids.iter().position(|&id| id == active)
+        {
+            let next = (pos + 1) % ids.len();
+            let next_id = ids[next];
+            self.active_pane = Some(next_id);
+            // Bring floating pane to front when focused
+            if self.floating_panes.iter().any(|fp| fp.pane.id() == next_id) {
+                self.bring_floating_to_front(next_id);
             }
+            return true;
+        }
         self.active_pane = ids.first().copied();
         true
     }
@@ -352,15 +360,16 @@ impl Tab {
             return false;
         }
         if let Some(active) = self.active_pane
-            && let Some(pos) = ids.iter().position(|&id| id == active) {
-                let prev = if pos == 0 { ids.len() - 1 } else { pos - 1 };
-                let prev_id = ids[prev];
-                self.active_pane = Some(prev_id);
-                if self.floating_panes.iter().any(|fp| fp.pane.id() == prev_id) {
-                    self.bring_floating_to_front(prev_id);
-                }
-                return true;
+            && let Some(pos) = ids.iter().position(|&id| id == active)
+        {
+            let prev = if pos == 0 { ids.len() - 1 } else { pos - 1 };
+            let prev_id = ids[prev];
+            self.active_pane = Some(prev_id);
+            if self.floating_panes.iter().any(|fp| fp.pane.id() == prev_id) {
+                self.bring_floating_to_front(prev_id);
             }
+            return true;
+        }
         self.active_pane = ids.last().copied();
         true
     }
@@ -373,7 +382,9 @@ impl Tab {
             None => return false,
         };
 
-        let positions = self.layout.compute_positions(self.size.cols, self.size.rows);
+        let positions = self
+            .layout
+            .compute_positions(self.size.cols, self.size.rows);
         let active_pos = match positions.iter().find(|(id, _)| *id == active) {
             Some((_, pos)) => *pos,
             None => return false,
@@ -396,25 +407,45 @@ impl Tab {
             let is_candidate = match direction {
                 FocusDirection::Up => {
                     pos.row + pos.rows <= active_pos.row
-                        && ranges_overlap(pos.col, pos.col + pos.cols, active_pos.col, active_pos.col + active_pos.cols)
+                        && ranges_overlap(
+                            pos.col,
+                            pos.col + pos.cols,
+                            active_pos.col,
+                            active_pos.col + active_pos.cols,
+                        )
                 }
                 FocusDirection::Down => {
                     pos.row >= active_pos.row + active_pos.rows
-                        && ranges_overlap(pos.col, pos.col + pos.cols, active_pos.col, active_pos.col + active_pos.cols)
+                        && ranges_overlap(
+                            pos.col,
+                            pos.col + pos.cols,
+                            active_pos.col,
+                            active_pos.col + active_pos.cols,
+                        )
                 }
                 FocusDirection::Left => {
                     pos.col + pos.cols <= active_pos.col
-                        && ranges_overlap(pos.row, pos.row + pos.rows, active_pos.row, active_pos.row + active_pos.rows)
+                        && ranges_overlap(
+                            pos.row,
+                            pos.row + pos.rows,
+                            active_pos.row,
+                            active_pos.row + active_pos.rows,
+                        )
                 }
                 FocusDirection::Right => {
                     pos.col >= active_pos.col + active_pos.cols
-                        && ranges_overlap(pos.row, pos.row + pos.rows, active_pos.row, active_pos.row + active_pos.rows)
+                        && ranges_overlap(
+                            pos.row,
+                            pos.row + pos.rows,
+                            active_pos.row,
+                            active_pos.row + active_pos.rows,
+                        )
                 }
             };
 
             if is_candidate {
-                let dist = active_center_col.abs_diff(center_col)
-                    + active_center_row.abs_diff(center_row);
+                let dist =
+                    active_center_col.abs_diff(center_col) + active_center_row.abs_diff(center_row);
                 if best.is_none() || dist < best.unwrap().1 {
                     best = Some((id, dist));
                 }
@@ -434,7 +465,9 @@ impl Tab {
 
     /// Recompute and apply pane sizes from the layout engine.
     fn sync_pane_sizes(&mut self) {
-        let positions = self.layout.compute_positions(self.size.cols, self.size.rows);
+        let positions = self
+            .layout
+            .compute_positions(self.size.cols, self.size.rows);
         for (id, pos) in &positions {
             if let Some(p) = self.panes.get_mut(id) {
                 p.resize(pos.cols, pos.rows);
@@ -451,7 +484,12 @@ impl Tab {
 
     /// Resize a specific pane in a direction by an amount (in character cells).
     /// The pane grows in the specified direction (taking space from the neighbor).
-    pub fn resize_pane(&mut self, pane_id: PaneId, direction: ResizeDirection, amount: i32) -> bool {
+    pub fn resize_pane(
+        &mut self,
+        pane_id: PaneId,
+        direction: ResizeDirection,
+        amount: i32,
+    ) -> bool {
         if let Some(pane) = self.panes.get(&pane_id) {
             // Refuse resizing if the pane has fixed constraints on the relevant axis
             match direction {
@@ -522,26 +560,33 @@ impl Tab {
     /// Floating panes appear after tiled panes in the returned list (higher z-order).
     pub fn compute_positions(&self) -> Vec<(PaneId, PanePosition)> {
         let mut positions = if let Some(fs_id) = self.fullscreen_pane {
-            vec![(fs_id, PanePosition {
-                col: 0,
-                row: 0,
-                cols: self.size.cols,
-                rows: self.size.rows,
-            })]
+            vec![(
+                fs_id,
+                PanePosition {
+                    col: 0,
+                    row: 0,
+                    cols: self.size.cols,
+                    rows: self.size.rows,
+                },
+            )]
         } else {
-            self.layout.compute_positions(self.size.cols, self.size.rows)
+            self.layout
+                .compute_positions(self.size.cols, self.size.rows)
         };
 
         // Append visible floating panes in z-order
         if self.show_floating {
             for fp in &self.floating_panes {
                 if fp.visible {
-                    positions.push((fp.pane.id(), PanePosition {
-                        col: fp.x,
-                        row: fp.y,
-                        cols: fp.width,
-                        rows: fp.height,
-                    }));
+                    positions.push((
+                        fp.pane.id(),
+                        PanePosition {
+                            col: fp.x,
+                            row: fp.y,
+                            cols: fp.width,
+                            rows: fp.height,
+                        },
+                    ));
                 }
             }
         }
@@ -614,7 +659,10 @@ impl Tab {
             return;
         }
         let count = self.panes.len();
-        let applicable: Vec<usize> = self.swap_layouts.iter().enumerate()
+        let applicable: Vec<usize> = self
+            .swap_layouts
+            .iter()
+            .enumerate()
             .filter(|(_, sl)| {
                 let min_ok = sl.min_panes.is_none_or(|min| count >= min);
                 let max_ok = sl.max_panes.is_none_or(|max| count <= max);
@@ -625,7 +673,8 @@ impl Tab {
         if applicable.is_empty() {
             return;
         }
-        let current_pos = self.current_swap_index
+        let current_pos = self
+            .current_swap_index
             .and_then(|idx| applicable.iter().position(|&i| i == idx));
         let next_pos = match current_pos {
             Some(pos) => (pos + 1) % applicable.len(),
@@ -640,7 +689,10 @@ impl Tab {
             return;
         }
         let count = self.panes.len();
-        let applicable: Vec<usize> = self.swap_layouts.iter().enumerate()
+        let applicable: Vec<usize> = self
+            .swap_layouts
+            .iter()
+            .enumerate()
             .filter(|(_, sl)| {
                 let min_ok = sl.min_panes.is_none_or(|min| count >= min);
                 let max_ok = sl.max_panes.is_none_or(|max| count <= max);
@@ -651,11 +703,16 @@ impl Tab {
         if applicable.is_empty() {
             return;
         }
-        let current_pos = self.current_swap_index
+        let current_pos = self
+            .current_swap_index
             .and_then(|idx| applicable.iter().position(|&i| i == idx));
         let prev_pos = match current_pos {
             Some(pos) => {
-                if pos == 0 { applicable.len() - 1 } else { pos - 1 }
+                if pos == 0 {
+                    applicable.len() - 1
+                } else {
+                    pos - 1
+                }
             }
             None => applicable.len() - 1,
         };
@@ -692,7 +749,13 @@ impl Tab {
     }
 
     /// Create a floating pane with custom coordinates, clamped to the viewport.
-    pub fn new_floating_pane_with_coords(&mut self, x: usize, y: usize, w: usize, h: usize) -> PaneId {
+    pub fn new_floating_pane_with_coords(
+        &mut self,
+        x: usize,
+        y: usize,
+        w: usize,
+        h: usize,
+    ) -> PaneId {
         let id = self.next_pane_id;
         self.next_pane_id += 1;
 
@@ -723,9 +786,10 @@ impl Tab {
         // When hiding floating panes, move focus to tiled if currently on a floating pane
         if !self.show_floating {
             if let Some(active) = self.active_pane
-                && self.floating_panes.iter().any(|fp| fp.pane.id() == active) {
-                    self.active_pane = self.layout.pane_ids().first().copied();
-                }
+                && self.floating_panes.iter().any(|fp| fp.pane.id() == active)
+            {
+                self.active_pane = self.layout.pane_ids().first().copied();
+            }
         } else {
             // When showing, focus the top floating pane if any
             if let Some(fp) = self.floating_panes.last() {
@@ -751,7 +815,10 @@ impl Tab {
             self.floating_panes.remove(idx);
             if self.active_pane == Some(id) {
                 // Focus the next floating pane or fall back to tiled
-                self.active_pane = self.floating_panes.last().map(|fp| fp.pane.id())
+                self.active_pane = self
+                    .floating_panes
+                    .last()
+                    .map(|fp| fp.pane.id())
                     .or_else(|| self.layout.pane_ids().first().copied());
             }
             true
@@ -916,9 +983,12 @@ impl Tab {
             self.fullscreen_pane = None;
         }
 
-        let positions = self.layout.compute_positions(self.size.cols, self.size.rows);
+        let positions = self
+            .layout
+            .compute_positions(self.size.cols, self.size.rows);
         // Find the pane with the largest area
-        let largest = positions.iter()
+        let largest = positions
+            .iter()
             .max_by_key(|(_, pos)| pos.cols * pos.rows)?;
         let target_id = largest.0;
 
@@ -947,7 +1017,9 @@ impl Tab {
             None => return false,
         };
 
-        let positions = self.layout.compute_positions(self.size.cols, self.size.rows);
+        let positions = self
+            .layout
+            .compute_positions(self.size.cols, self.size.rows);
         let active_pos = match positions.iter().find(|(id, _)| *id == active) {
             Some((_, pos)) => *pos,
             None => return false,
@@ -959,21 +1031,52 @@ impl Tab {
         let mut best: Option<(PaneId, usize)> = None;
 
         for &(id, pos) in &positions {
-            if id == active { continue; }
+            if id == active {
+                continue;
+            }
             let center_col = pos.col * 2 + pos.cols;
             let center_row = pos.row * 2 + pos.rows;
             let is_candidate = match direction {
-                FocusDirection::Up => pos.row + pos.rows <= active_pos.row
-                    && ranges_overlap(pos.col, pos.col + pos.cols, active_pos.col, active_pos.col + active_pos.cols),
-                FocusDirection::Down => pos.row >= active_pos.row + active_pos.rows
-                    && ranges_overlap(pos.col, pos.col + pos.cols, active_pos.col, active_pos.col + active_pos.cols),
-                FocusDirection::Left => pos.col + pos.cols <= active_pos.col
-                    && ranges_overlap(pos.row, pos.row + pos.rows, active_pos.row, active_pos.row + active_pos.rows),
-                FocusDirection::Right => pos.col >= active_pos.col + active_pos.cols
-                    && ranges_overlap(pos.row, pos.row + pos.rows, active_pos.row, active_pos.row + active_pos.rows),
+                FocusDirection::Up => {
+                    pos.row + pos.rows <= active_pos.row
+                        && ranges_overlap(
+                            pos.col,
+                            pos.col + pos.cols,
+                            active_pos.col,
+                            active_pos.col + active_pos.cols,
+                        )
+                }
+                FocusDirection::Down => {
+                    pos.row >= active_pos.row + active_pos.rows
+                        && ranges_overlap(
+                            pos.col,
+                            pos.col + pos.cols,
+                            active_pos.col,
+                            active_pos.col + active_pos.cols,
+                        )
+                }
+                FocusDirection::Left => {
+                    pos.col + pos.cols <= active_pos.col
+                        && ranges_overlap(
+                            pos.row,
+                            pos.row + pos.rows,
+                            active_pos.row,
+                            active_pos.row + active_pos.rows,
+                        )
+                }
+                FocusDirection::Right => {
+                    pos.col >= active_pos.col + active_pos.cols
+                        && ranges_overlap(
+                            pos.row,
+                            pos.row + pos.rows,
+                            active_pos.row,
+                            active_pos.row + active_pos.rows,
+                        )
+                }
             };
             if is_candidate {
-                let dist = active_center_col.abs_diff(center_col) + active_center_row.abs_diff(center_row);
+                let dist =
+                    active_center_col.abs_diff(center_col) + active_center_row.abs_diff(center_row);
                 if best.is_none() || dist < best.unwrap().1 {
                     best = Some((id, dist));
                 }
@@ -1007,14 +1110,15 @@ impl Tab {
     pub fn move_pane_backwards(&mut self, pane_id: PaneId) -> bool {
         let ids = self.layout.pane_ids();
         if let Some(pos) = ids.iter().position(|&id| id == pane_id)
-            && pos > 0 {
-                let prev_id = ids[pos - 1];
-                let swapped = self.layout.swap_leaves(pane_id, prev_id);
-                if swapped {
-                    self.sync_pane_sizes();
-                }
-                return swapped;
+            && pos > 0
+        {
+            let prev_id = ids[pos - 1];
+            let swapped = self.layout.swap_leaves(pane_id, prev_id);
+            if swapped {
+                self.sync_pane_sizes();
             }
+            return swapped;
+        }
         false
     }
 
@@ -1100,13 +1204,20 @@ impl Tab {
     /// Returns true if any pane in this tab has an unread notification.
     pub fn has_notification(&self) -> bool {
         self.panes.values().any(|p| p.has_notification())
-            || self.floating_panes.iter().any(|fp| fp.pane.has_notification())
+            || self
+                .floating_panes
+                .iter()
+                .any(|fp| fp.pane.has_notification())
     }
 
     /// Returns the number of panes with unread notifications.
     pub fn notification_count(&self) -> usize {
         let tiled = self.panes.values().filter(|p| p.has_notification()).count();
-        let floating = self.floating_panes.iter().filter(|fp| fp.pane.has_notification()).count();
+        let floating = self
+            .floating_panes
+            .iter()
+            .filter(|fp| fp.pane.has_notification())
+            .count();
         tiled + floating
     }
 
@@ -1144,12 +1255,16 @@ impl Tab {
     /// focused one. Includes visible floating panes.
     pub fn sync_target_pane_ids(&self) -> Vec<PaneId> {
         let focused = self.active_pane;
-        let mut ids: Vec<PaneId> = self.panes.keys().copied()
+        let mut ids: Vec<PaneId> = self
+            .panes
+            .keys()
+            .copied()
             .filter(|id| Some(*id) != focused)
             .collect();
         if self.show_floating {
             ids.extend(
-                self.floating_panes.iter()
+                self.floating_panes
+                    .iter()
                     .filter(|fp| fp.visible && Some(fp.pane.id()) != focused)
                     .map(|fp| fp.pane.id()),
             );
@@ -1209,7 +1324,10 @@ mod tests {
     fn tab_notification_from_floating_pane() {
         let mut tab = Tab::new(0, "test", 80, 25);
         let fp_id = tab.new_floating_pane();
-        tab.floating_pane_mut(fp_id).unwrap().pane.set_notification("Float!");
+        tab.floating_pane_mut(fp_id)
+            .unwrap()
+            .pane
+            .set_notification("Float!");
         assert!(tab.has_notification());
         assert_eq!(tab.notification_count(), 1);
     }

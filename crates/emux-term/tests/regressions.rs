@@ -16,7 +16,10 @@ fn regression_scroll_bottom_leq_top_no_panic() {
 
     // Grid should be unchanged (no-op verified, not just no-panic)
     let cell_after = grid.cell(0, 0).clone();
-    assert_eq!(cell_before.c, cell_after.c, "invalid scroll range should be a no-op");
+    assert_eq!(
+        cell_before.c, cell_after.c,
+        "invalid scroll range should be a no-op"
+    );
 }
 
 #[test]

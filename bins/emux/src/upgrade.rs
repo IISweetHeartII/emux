@@ -106,8 +106,7 @@ fn download_and_replace(release: &ReleaseInfo) -> Result<(), String> {
     // Download to a temp directory.
     let tmp_dir = env::temp_dir().join("emux-upgrade");
     let _ = fs::remove_dir_all(&tmp_dir);
-    fs::create_dir_all(&tmp_dir)
-        .map_err(|e| format!("failed to create temp dir: {e}"))?;
+    fs::create_dir_all(&tmp_dir).map_err(|e| format!("failed to create temp dir: {e}"))?;
 
     let archive_path = tmp_dir.join(&archive_name);
 
@@ -158,7 +157,10 @@ fn download_and_replace(release: &ReleaseInfo) -> Result<(), String> {
     let new_binary = tmp_dir.join(binary_name);
 
     if !new_binary.exists() {
-        return Err(format!("extracted binary not found at {}", new_binary.display()));
+        return Err(format!(
+            "extracted binary not found at {}",
+            new_binary.display()
+        ));
     }
 
     // On Unix, we can replace the running binary by renaming.
@@ -171,8 +173,7 @@ fn download_and_replace(release: &ReleaseInfo) -> Result<(), String> {
             .map_err(|e| format!("failed to backup current binary: {e}"))?;
     }
 
-    fs::copy(&new_binary, &exe_path)
-        .map_err(|e| format!("failed to install new binary: {e}"))?;
+    fs::copy(&new_binary, &exe_path).map_err(|e| format!("failed to install new binary: {e}"))?;
 
     // Set executable permission on Unix.
     #[cfg(unix)]

@@ -9,8 +9,8 @@ use emux_pty::{CommandBuilder, PtySize, UnixPty as NativePty};
 #[cfg(windows)]
 use emux_pty::{CommandBuilder, PtySize, WinPty as NativePty};
 use emux_render::damage::DamageTracker;
-use emux_term::{DamageMode, Screen};
 use emux_term::search::SearchState;
+use emux_term::{DamageMode, Screen};
 use emux_vt::Parser;
 
 use crate::AppError;
@@ -37,7 +37,6 @@ pub(crate) enum InputMode {
     Normal,
     Search,
 }
-
 
 // ---------------------------------------------------------------------------
 // Per-pane terminal state

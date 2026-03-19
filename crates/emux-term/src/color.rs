@@ -13,4 +13,3 @@ pub enum Color {
     /// 24-bit true color.
     Rgb(u8, u8, u8),
 }
-

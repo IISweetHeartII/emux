@@ -94,9 +94,7 @@ impl LayoutNode {
                     RemoveResult::NotFound => {
                         let second_result = second.remove(target);
                         match second_result {
-                            RemoveResult::Removed => {
-                                RemoveResult::Replaced(first.as_ref().clone())
-                            }
+                            RemoveResult::Removed => RemoveResult::Replaced(first.as_ref().clone()),
                             RemoveResult::Replaced(replacement) => {
                                 **second = replacement;
                                 RemoveResult::NotFound // handled internally
@@ -120,31 +118,37 @@ impl LayoutNode {
     ) {
         match self {
             LayoutNode::Leaf(id) => {
-                out.push((*id, PanePosition { col, row, cols, rows }));
+                out.push((
+                    *id,
+                    PanePosition {
+                        col,
+                        row,
+                        cols,
+                        rows,
+                    },
+                ));
             }
             LayoutNode::Split {
                 direction,
                 ratio,
                 first,
                 second,
-            } => {
-                match direction {
-                    SplitDirection::Horizontal => {
-                        let first_rows = ((rows as f32) * ratio).round() as usize;
-                        let first_rows = first_rows.max(1).min(rows.saturating_sub(1));
-                        let second_rows = rows - first_rows;
-                        first.compute_positions_inner(col, row, cols, first_rows, out);
-                        second.compute_positions_inner(col, row + first_rows, cols, second_rows, out);
-                    }
-                    SplitDirection::Vertical => {
-                        let first_cols = ((cols as f32) * ratio).round() as usize;
-                        let first_cols = first_cols.max(1).min(cols.saturating_sub(1));
-                        let second_cols = cols - first_cols;
-                        first.compute_positions_inner(col, row, first_cols, rows, out);
-                        second.compute_positions_inner(col + first_cols, row, second_cols, rows, out);
-                    }
+            } => match direction {
+                SplitDirection::Horizontal => {
+                    let first_rows = ((rows as f32) * ratio).round() as usize;
+                    let first_rows = first_rows.max(1).min(rows.saturating_sub(1));
+                    let second_rows = rows - first_rows;
+                    first.compute_positions_inner(col, row, cols, first_rows, out);
+                    second.compute_positions_inner(col, row + first_rows, cols, second_rows, out);
                 }
-            }
+                SplitDirection::Vertical => {
+                    let first_cols = ((cols as f32) * ratio).round() as usize;
+                    let first_cols = first_cols.max(1).min(cols.saturating_sub(1));
+                    let second_cols = cols - first_cols;
+                    first.compute_positions_inner(col, row, first_cols, rows, out);
+                    second.compute_positions_inner(col + first_cols, row, second_cols, rows, out);
+                }
+            },
         }
     }
 
@@ -153,7 +157,12 @@ impl LayoutNode {
     fn adjust_ratio(&mut self, target: PaneId, axis: SplitDirection, delta: f32) -> bool {
         match self {
             LayoutNode::Leaf(_) => false,
-            LayoutNode::Split { direction, ratio, first, second } => {
+            LayoutNode::Split {
+                direction,
+                ratio,
+                first,
+                second,
+            } => {
                 let in_first = first.pane_ids().contains(&target);
                 let in_second = second.pane_ids().contains(&target);
                 if !in_first && !in_second {
@@ -224,7 +233,10 @@ impl LayoutNode {
     ) -> Option<PanePosition> {
         let mut positions = Vec::new();
         self.compute_positions_inner(col, row, cols, rows, &mut positions);
-        positions.into_iter().find(|(id, _)| *id == target).map(|(_, pos)| pos)
+        positions
+            .into_iter()
+            .find(|(id, _)| *id == target)
+            .map(|(_, pos)| pos)
     }
 }
 

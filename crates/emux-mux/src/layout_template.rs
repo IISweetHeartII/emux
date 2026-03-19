@@ -53,8 +53,8 @@ const TEMPLATE_FILENAME: &str = ".emux.toml";
 
 /// Load and parse a layout template from the given path.
 pub fn load_template(path: &Path) -> Result<LayoutTemplate, String> {
-    let content =
-        std::fs::read_to_string(path).map_err(|e| format!("failed to read {}: {e}", path.display()))?;
+    let content = std::fs::read_to_string(path)
+        .map_err(|e| format!("failed to read {}: {e}", path.display()))?;
     parse_template(&content)
 }
 

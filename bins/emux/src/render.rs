@@ -1,11 +1,6 @@
 use std::io::{self, Write};
 
-use crossterm::{
-    QueueableCommand,
-    cursor as ct_cursor,
-    style,
-    terminal,
-};
+use crossterm::{QueueableCommand, cursor as ct_cursor, style, terminal};
 use emux_mux::{PaneId, PanePosition};
 use emux_render::damage::DamageTracker;
 use emux_render::text::render_row;
@@ -53,7 +48,15 @@ pub(crate) fn render_all<W: Write>(
 
     for &(pane_id, ref pos) in &positions {
         if let Some(ps) = app.panes.get(&pane_id) {
-            render_pane_region(writer, &ps.screen, &ps.damage, pos, tc, pane_area_rows, force_clear)?;
+            render_pane_region(
+                writer,
+                &ps.screen,
+                &ps.damage,
+                pos,
+                tc,
+                pane_area_rows,
+                force_clear,
+            )?;
         }
     }
 
@@ -72,14 +75,15 @@ pub(crate) fn render_all<W: Write>(
     // Position cursor at the active pane's cursor location.
     if let Some(aid) = active_id
         && let Some(ps) = app.panes.get(&aid)
-            && let Some((_, apos)) = positions.iter().find(|(id, _)| *id == aid) {
-                let cx = apos.col as u16 + ps.screen.cursor.col as u16;
-                let cy = apos.row as u16 + ps.screen.cursor.row as u16;
-                writer.queue(ct_cursor::MoveTo(cx, cy))?;
-                if ps.screen.cursor.visible {
-                    writer.queue(ct_cursor::Show)?;
-                }
-            }
+        && let Some((_, apos)) = positions.iter().find(|(id, _)| *id == aid)
+    {
+        let cx = apos.col as u16 + ps.screen.cursor.col as u16;
+        let cy = apos.row as u16 + ps.screen.cursor.row as u16;
+        writer.queue(ct_cursor::MoveTo(cx, cy))?;
+        if ps.screen.cursor.visible {
+            writer.queue(ct_cursor::Show)?;
+        }
+    }
 
     writer.flush()?;
 
@@ -160,8 +164,7 @@ pub(crate) fn draw_borders<W: Write>(
                 // Draw vertical border line.
                 let row_start = pa.row.max(pb.row);
                 let row_end = (pa.row + pa.rows).min(pb.row + pb.rows).min(pane_area_rows);
-                let is_active_border =
-                    active_id == Some(id_a) || active_id == Some(id_b);
+                let is_active_border = active_id == Some(id_a) || active_id == Some(id_b);
 
                 if is_active_border {
                     writer.queue(style::SetForegroundColor(style::Color::Cyan))?;
@@ -169,7 +172,10 @@ pub(crate) fn draw_borders<W: Write>(
                     writer.queue(style::SetForegroundColor(style::Color::DarkGrey))?;
                 }
                 for row in row_start..row_end {
-                    writer.queue(ct_cursor::MoveTo(right_edge.saturating_sub(1) as u16, row as u16))?;
+                    writer.queue(ct_cursor::MoveTo(
+                        right_edge.saturating_sub(1) as u16,
+                        row as u16,
+                    ))?;
                     writer.queue(style::Print("\u{2502}"))?; // │
                 }
                 writer.queue(style::ResetColor)?;
@@ -190,15 +196,17 @@ pub(crate) fn draw_borders<W: Write>(
             if pb.row == bottom_edge {
                 let col_start = pa.col.max(pb.col);
                 let col_end = (pa.col + pa.cols).min(pb.col + pb.cols).min(total_cols);
-                let is_active_border =
-                    active_id == Some(id_a) || active_id == Some(id_b);
+                let is_active_border = active_id == Some(id_a) || active_id == Some(id_b);
 
                 if is_active_border {
                     writer.queue(style::SetForegroundColor(style::Color::Cyan))?;
                 } else {
                     writer.queue(style::SetForegroundColor(style::Color::DarkGrey))?;
                 }
-                writer.queue(ct_cursor::MoveTo(col_start as u16, bottom_edge.saturating_sub(1) as u16))?;
+                writer.queue(ct_cursor::MoveTo(
+                    col_start as u16,
+                    bottom_edge.saturating_sub(1) as u16,
+                ))?;
                 let line: String = "\u{2500}".repeat(col_end - col_start); // ─
                 writer.queue(style::Print(&line))?;
                 writer.queue(style::ResetColor)?;
@@ -239,7 +247,11 @@ pub(crate) fn draw_status_bar<W: Write>(
     }
 
     let pane_count = app.panes.len();
-    let right = format!("{} pane{} | emux 0.1.0 ", pane_count, if pane_count == 1 { "" } else { "s" });
+    let right = format!(
+        "{} pane{} | emux 0.1.0 ",
+        pane_count,
+        if pane_count == 1 { "" } else { "s" }
+    );
 
     // Pad to full width with right-aligned info.
     let tc = total_cols as usize;

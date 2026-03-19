@@ -78,7 +78,7 @@ mod unix_tests {
                     if e.raw_os_error() == Some(nix::libc::EIO)
                         || e.kind() == std::io::ErrorKind::WouldBlock =>
                 {
-                    break
+                    break;
                 }
                 Err(_) => break,
             }
@@ -121,7 +121,8 @@ mod unix_tests {
             pixel_height: 200,
         };
 
-        pty.resize(another_size).expect("second resize should not fail");
+        pty.resize(another_size)
+            .expect("second resize should not fail");
 
         // Clean up: the Drop impl will SIGHUP the child.
     }
@@ -172,7 +173,9 @@ mod unix_tests {
         assert!(!program.is_empty(), "default shell should not be empty");
         // It should be either from $SHELL or /bin/sh.
         assert!(
-            program.contains("sh") || program.contains("zsh") || program.contains("bash")
+            program.contains("sh")
+                || program.contains("zsh")
+                || program.contains("bash")
                 || program.contains("fish"),
             "expected a shell program, got: {program}"
         );

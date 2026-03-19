@@ -4,7 +4,7 @@
 use std::os::unix::net::UnixStream;
 use std::path::Path;
 
-use emux_ipc::{codec, ClientMessage, ServerMessage};
+use emux_ipc::{ClientMessage, ServerMessage, codec};
 
 use crate::DaemonError;
 

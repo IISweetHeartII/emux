@@ -2,7 +2,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-
 use emux_ipc::{ClientMessage, ServerMessage};
 use emux_mux::{Session, SplitDirection};
 
@@ -21,9 +20,13 @@ pub(crate) fn socket_dir() -> PathBuf {
 /// On Windows this is a `.port` file containing the TCP port number.
 pub(crate) fn socket_path_for(name: &str) -> PathBuf {
     #[cfg(unix)]
-    { socket_dir().join(format!("emux-{name}.sock")) }
+    {
+        socket_dir().join(format!("emux-{name}.sock"))
+    }
     #[cfg(windows)]
-    { socket_dir().join(format!("emux-{name}.port")) }
+    {
+        socket_dir().join(format!("emux-{name}.port"))
+    }
 }
 
 /// List all live daemon sockets and return (name, path) pairs.
@@ -43,7 +46,9 @@ pub(crate) fn list_live_sessions() -> Vec<(String, PathBuf)> {
     for entry in entries.flatten() {
         let path = entry.path();
         if let Some(fname) = path.file_name().and_then(|f| f.to_str())
-            && let Some(name) = fname.strip_prefix(prefix).and_then(|s| s.strip_suffix(suffix))
+            && let Some(name) = fname
+                .strip_prefix(prefix)
+                .and_then(|s| s.strip_suffix(suffix))
         {
             // Check if the daemon is alive by trying to connect.
             #[cfg(unix)]
@@ -255,9 +260,12 @@ fn run_daemon_loop_body<S: std::io::Read + std::io::Write>(
             Ok(msg) => {
                 let (reply, should_broadcast) = match msg {
                     ClientMessage::Ping => (ServerMessage::Pong, false),
-                    ClientMessage::GetVersion => (ServerMessage::Version {
-                        version: emux_ipc::PROTOCOL_VERSION,
-                    }, false),
+                    ClientMessage::GetVersion => (
+                        ServerMessage::Version {
+                            version: emux_ipc::PROTOCOL_VERSION,
+                        },
+                        false,
+                    ),
                     ClientMessage::Resize { cols, rows } => {
                         session.resize(cols as usize, rows as usize);
                         (ServerMessage::Ack, false)
@@ -274,18 +282,24 @@ fn run_daemon_loop_body<S: std::io::Read + std::io::Write>(
                             cols: session.size().cols,
                             rows: session.size().rows,
                         };
-                        (ServerMessage::SessionList {
-                            sessions: vec![entry],
-                        }, false)
+                        (
+                            ServerMessage::SessionList {
+                                sessions: vec![entry],
+                            },
+                            false,
+                        )
                     }
                     ClientMessage::KillSession { ref name } => {
                         if name == session.name() {
                             *shutdown = true;
                             (ServerMessage::Ack, false)
                         } else {
-                            (ServerMessage::Error {
-                                message: format!("no such session: {name}"),
-                            }, false)
+                            (
+                                ServerMessage::Error {
+                                    message: format!("no such session: {name}"),
+                                },
+                                false,
+                            )
                         }
                     }
                     ClientMessage::SpawnPane { ref direction } => {
@@ -295,27 +309,36 @@ fn run_daemon_loop_body<S: std::io::Read + std::io::Write>(
                         };
                         match session.active_tab_mut().split_pane(dir) {
                             Some(pane_id) => (ServerMessage::SpawnResult { pane_id }, true),
-                            None => (ServerMessage::Error {
-                                message: "cannot split pane".into(),
-                            }, false),
+                            None => (
+                                ServerMessage::Error {
+                                    message: "cannot split pane".into(),
+                                },
+                                false,
+                            ),
                         }
                     }
                     ClientMessage::KillPane { pane_id } => {
                         if session.active_tab_mut().close_pane(pane_id) {
                             (ServerMessage::Ack, true)
                         } else {
-                            (ServerMessage::Error {
-                                message: format!("cannot kill pane {pane_id}"),
-                            }, false)
+                            (
+                                ServerMessage::Error {
+                                    message: format!("cannot kill pane {pane_id}"),
+                                },
+                                false,
+                            )
                         }
                     }
                     ClientMessage::FocusPane { pane_id } => {
                         if session.active_tab_mut().focus_pane(pane_id) {
                             (ServerMessage::Ack, true)
                         } else {
-                            (ServerMessage::Error {
-                                message: format!("pane {pane_id} not found"),
-                            }, false)
+                            (
+                                ServerMessage::Error {
+                                    message: format!("pane {pane_id} not found"),
+                                },
+                                false,
+                            )
                         }
                     }
                     ClientMessage::KeyInput { .. } => (ServerMessage::Ack, true),
@@ -327,9 +350,12 @@ fn run_daemon_loop_body<S: std::io::Read + std::io::Write>(
                     | ClientMessage::ListPanes
                     | ClientMessage::GetPaneInfo { .. }
                     | ClientMessage::ResizePane { .. }
-                    | ClientMessage::SetPaneTitle { .. } => (ServerMessage::Error {
-                        message: "not yet implemented".into(),
-                    }, false),
+                    | ClientMessage::SetPaneTitle { .. } => (
+                        ServerMessage::Error {
+                            message: "not yet implemented".into(),
+                        },
+                        false,
+                    ),
                 };
                 // Always send the reply to the originating client.
                 per_client_reply.push((*id, reply.clone()));
@@ -340,8 +366,8 @@ fn run_daemon_loop_body<S: std::io::Read + std::io::Write>(
                 }
             }
             Err(emux_ipc::CodecError::Io(ref e))
-                if e.kind() == io::ErrorKind::WouldBlock
-                    || e.kind() == io::ErrorKind::TimedOut => {}
+                if e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::TimedOut => {
+            }
             Err(_) => {
                 to_remove.push(*id);
             }

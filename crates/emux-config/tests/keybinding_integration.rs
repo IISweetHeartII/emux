@@ -3,7 +3,7 @@
 //! These tests verify that configuration loading produces valid, parseable
 //! keybinding strings, and that the keybinding format is consistent.
 
-use emux_config::{merge_with_defaults, Config, KeyBindings};
+use emux_config::{Config, KeyBindings, merge_with_defaults};
 
 // ---------------------------------------------------------------------------
 // 1. Default config keybinding format validation

@@ -7,7 +7,7 @@
 mod common;
 use common::TestTerminal;
 
-use emux_term::input::{encode_key, encode_paste, Key, Modifiers};
+use emux_term::input::{Key, Modifiers, encode_key, encode_paste};
 
 // ---------------------------------------------------------------------------
 // 1. Screen + Input: application cursor keys via CSI ?1h / ?1l
@@ -228,8 +228,7 @@ fn screen_bracketed_paste_multiline_content() {
     let text = "line1\nline2\nline3";
     let paste = encode_paste(text, t.screen.modes.bracketed_paste);
     assert_eq!(
-        paste,
-        b"\x1b[200~line1\nline2\nline3\x1b[201~",
+        paste, b"\x1b[200~line1\nline2\nline3\x1b[201~",
         "multiline paste should be wrapped"
     );
 }
@@ -256,8 +255,8 @@ fn screen_multiple_modes_coexist() {
     let mut t = TestTerminal::new(80, 25);
 
     // Enable DECCKM, LNM, and bracketed paste together
-    t.push(b"\x1b[?1h");    // DECCKM
-    t.push(b"\x1b[20h");    // LNM
+    t.push(b"\x1b[?1h"); // DECCKM
+    t.push(b"\x1b[20h"); // LNM
     t.push(b"\x1b[?2004h"); // bracketed paste
 
     assert!(t.screen.modes.application_cursor_keys);
@@ -295,9 +294,9 @@ fn screen_ris_resets_all_modes() {
     let mut t = TestTerminal::new(80, 25);
 
     // Enable various modes
-    t.push(b"\x1b[?1h");    // DECCKM
+    t.push(b"\x1b[?1h"); // DECCKM
     t.push(b"\x1b[?2004h"); // bracketed paste
-    t.push(b"\x1b[20h");    // LNM
+    t.push(b"\x1b[20h"); // LNM
 
     assert!(t.screen.modes.application_cursor_keys);
     assert!(t.screen.modes.bracketed_paste);
@@ -314,10 +313,7 @@ fn screen_ris_resets_all_modes() {
         !t.screen.modes.bracketed_paste,
         "RIS should reset bracketed paste"
     );
-    assert!(
-        !t.screen.modes.newline,
-        "RIS should reset LNM"
-    );
+    assert!(!t.screen.modes.newline, "RIS should reset LNM");
 
     // Verify encoding reflects the reset
     let up = encode_key(

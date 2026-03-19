@@ -4,8 +4,8 @@
 //! Users can also cycle through layouts manually. Layout definitions can come
 //! from built-in presets or TOML configuration.
 
-use emux_mux::layout::{LayoutNode, SplitDirection};
 use emux_mux::Tab;
+use emux_mux::layout::{LayoutNode, SplitDirection};
 
 /// Helper: create a vertical split template for 2 panes (side by side).
 fn side_by_side_template() -> LayoutNode {
@@ -73,7 +73,12 @@ fn register_swap_layout_three_panes_one_top_two_bottom() {
     // Register a layout for 3 panes: one full-width pane on top, two
     // equal-width panes on the bottom row.
     let mut tab = Tab::new(0, "test", 80, 24);
-    tab.register_swap_layout("1-top-2-bottom", Some(3), Some(3), one_top_two_bottom_template());
+    tab.register_swap_layout(
+        "1-top-2-bottom",
+        Some(3),
+        Some(3),
+        one_top_two_bottom_template(),
+    );
     assert_eq!(tab.swap_layouts().len(), 1);
     assert_eq!(tab.swap_layouts()[0].name, "1-top-2-bottom");
 }
@@ -131,7 +136,12 @@ fn removing_pane_triggers_layout_swap_back() {
     // Going from 3 panes down to 2 should swap to the 2-pane layout.
     let mut tab = Tab::new(0, "test", 80, 24);
     tab.register_swap_layout("side-by-side", Some(2), Some(2), side_by_side_template());
-    tab.register_swap_layout("1-top-2-bottom", Some(3), Some(3), one_top_two_bottom_template());
+    tab.register_swap_layout(
+        "1-top-2-bottom",
+        Some(3),
+        Some(3),
+        one_top_two_bottom_template(),
+    );
 
     // Get to 3 panes
     tab.split_pane(SplitDirection::Vertical);
@@ -368,7 +378,10 @@ splits = ["30%", "70%"]
     let right_cols = positions[1].1.cols;
     assert_eq!(left_cols + right_cols, 100);
     // 30% of 100 = 30, allow some rounding tolerance
-    assert!(left_cols >= 28 && left_cols <= 32, "left_cols was {left_cols}");
+    assert!(
+        left_cols >= 28 && left_cols <= 32,
+        "left_cols was {left_cols}"
+    );
 }
 
 #[test]

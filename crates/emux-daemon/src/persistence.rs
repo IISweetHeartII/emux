@@ -65,9 +65,12 @@ pub struct SessionInfo {
 
 /// Return the default sessions directory: `~/.local/share/emux/sessions/`.
 pub fn sessions_dir() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .map(|home| home.join(".local").join("share").join("emux").join("sessions"))
+    std::env::var_os("HOME").map(PathBuf::from).map(|home| {
+        home.join(".local")
+            .join("share")
+            .join("emux")
+            .join("sessions")
+    })
 }
 
 /// Return the default snapshot path for a session name.
@@ -104,7 +107,11 @@ pub fn snapshot_from_session(session: &emux_mux::Session) -> SessionSnapshot {
         cols: session.size().cols,
         rows: session.size().rows,
         tab_count: session.tab_count(),
-        tab_names: session.tab_names().into_iter().map(|s| s.to_owned()).collect(),
+        tab_names: session
+            .tab_names()
+            .into_iter()
+            .map(|s| s.to_owned())
+            .collect(),
         tabs,
         active_tab_index: session.active_tab_index(),
     }
@@ -138,8 +145,7 @@ pub fn save_session(session: &emux_mux::Session, path: &Path) -> Result<(), io::
         std::fs::create_dir_all(parent)?;
     }
     let snap = snapshot_from_session(session);
-    let json = serde_json::to_string_pretty(&snap)
-        .map_err(io::Error::other)?;
+    let json = serde_json::to_string_pretty(&snap).map_err(io::Error::other)?;
     // Atomic-ish write: write to a temp file then rename.
     let tmp_path = path.with_extension("json.tmp");
     std::fs::write(&tmp_path, &json)?;
@@ -150,8 +156,7 @@ pub fn save_session(session: &emux_mux::Session, path: &Path) -> Result<(), io::
 /// Load a session snapshot from a JSON file (without building a Session).
 pub fn load_snapshot(path: &Path) -> Result<SessionSnapshot, io::Error> {
     let json = std::fs::read_to_string(path)?;
-    serde_json::from_str(&json)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    serde_json::from_str(&json).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
 /// Load a session from a JSON snapshot file.
@@ -171,12 +176,13 @@ pub fn list_sessions(base_dir: &Path) -> Vec<SessionInfo> {
         let path = entry.path();
         if path.extension().and_then(|e| e.to_str()) == Some("json")
             && let Ok(contents) = std::fs::read_to_string(&path)
-            && let Ok(snap) = serde_json::from_str::<SessionSnapshot>(&contents) {
-                infos.push(SessionInfo {
-                    name: snap.name,
-                    path,
-                });
-            }
+            && let Ok(snap) = serde_json::from_str::<SessionSnapshot>(&contents)
+        {
+            infos.push(SessionInfo {
+                name: snap.name,
+                path,
+            });
+        }
     }
     infos
 }

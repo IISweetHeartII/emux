@@ -48,25 +48,22 @@ pub enum HintKind {
 // Compiled regex patterns (compiled once via LazyLock)
 // ---------------------------------------------------------------------------
 
-static RE_URL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"https?://[^\s<>"'`\)\]]+|ftp://[^\s<>"'`\)\]]+"#).unwrap()
-});
+static RE_URL: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"https?://[^\s<>"'`\)\]]+|ftp://[^\s<>"'`\)\]]+"#).unwrap());
 
 static RE_FILE_PATH: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?:(?:[A-Za-z]:[/\\]|\\\\|\.[\\/]|~[\\/]|/)[A-Za-z0-9_.][A-Za-z0-9_.\\/\-]*)").unwrap()
+    Regex::new(r"(?:(?:[A-Za-z]:[/\\]|\\\\|\.[\\/]|~[\\/]|/)[A-Za-z0-9_.][A-Za-z0-9_.\\/\-]*)")
+        .unwrap()
 });
 
-static RE_GIT_SHA: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\b[0-9a-f]{7,40}\b").unwrap()
-});
+static RE_GIT_SHA: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b[0-9a-f]{7,40}\b").unwrap());
 
 static RE_IP_ADDRESS: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b").unwrap()
 });
 
-static RE_EMAIL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b").unwrap()
-});
+static RE_EMAIL: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b").unwrap());
 
 // ---------------------------------------------------------------------------
 // Single-line detection helpers
@@ -108,8 +105,7 @@ pub fn detect_git_shas(text: &str) -> Vec<(usize, usize, String)> {
             // Must contain at least one digit AND at least one letter to
             // look like a real SHA (avoids matching pure numbers or pure
             // letter words).
-            s.chars().any(|c| c.is_ascii_digit())
-                && s.chars().any(|c| c.is_ascii_alphabetic())
+            s.chars().any(|c| c.is_ascii_digit()) && s.chars().any(|c| c.is_ascii_alphabetic())
         })
         .map(|m| (m.start(), m.end(), m.as_str().to_string()))
         .collect()
@@ -149,9 +145,7 @@ pub fn detect_hints(rows: &[Row], cols: usize) -> Vec<HintMatch> {
         // Helper: convert a byte offset in `text` to a column index.
         // Because we build `text` from the cell characters (one char per
         // non-zero-width cell), the char index *is* the column index.
-        let byte_to_col = |byte_off: usize| -> usize {
-            text[..byte_off].chars().count()
-        };
+        let byte_to_col = |byte_off: usize| -> usize { text[..byte_off].chars().count() };
 
         // URL (highest priority — detect before file paths so we don't
         // duplicate the path portion of a URL).
@@ -211,9 +205,7 @@ pub fn detect_hints(rows: &[Row], cols: usize) -> Vec<HintMatch> {
 
         // File paths (skip if inside a URL or email).
         for (start, end, t) in detect_file_paths(&text) {
-            if overlaps_any(start, end, &url_ranges)
-                || overlaps_any(start, end, &email_ranges)
-            {
+            if overlaps_any(start, end, &url_ranges) || overlaps_any(start, end, &email_ranges) {
                 continue;
             }
             let sc = byte_to_col(start);
@@ -384,13 +376,9 @@ mod tests {
 
     #[test]
     fn detect_git_sha_full() {
-        let hits =
-            detect_git_shas("sha abc1234567890abcdef1234567890abcdef1234 done");
+        let hits = detect_git_shas("sha abc1234567890abcdef1234567890abcdef1234 done");
         assert_eq!(hits.len(), 1);
-        assert_eq!(
-            hits[0].2,
-            "abc1234567890abcdef1234567890abcdef1234"
-        );
+        assert_eq!(hits[0].2, "abc1234567890abcdef1234567890abcdef1234");
     }
 
     // ── IP address detection ──────────────────────────────────────────
@@ -418,8 +406,7 @@ mod tests {
         // Use detect_hints (which handles overlap suppression) to verify
         // that a line with mixed patterns produces the right results.
         let cols = 80;
-        let text =
-            "see https://example.com and /tmp/log.txt commit abc1234 done";
+        let text = "see https://example.com and /tmp/log.txt commit abc1234 done";
         let rows = vec![row_from_str(text, cols)];
         let hints = detect_hints(&rows, cols);
 
@@ -428,12 +415,12 @@ mod tests {
         assert!(kinds.contains(&HintKind::FilePath));
         assert!(kinds.contains(&HintKind::GitSha));
         // URL, file path, and SHA — exactly one of each.
+        assert_eq!(hints.iter().filter(|h| h.kind == HintKind::Url).count(), 1);
         assert_eq!(
-            hints.iter().filter(|h| h.kind == HintKind::Url).count(),
-            1
-        );
-        assert_eq!(
-            hints.iter().filter(|h| h.kind == HintKind::FilePath).count(),
+            hints
+                .iter()
+                .filter(|h| h.kind == HintKind::FilePath)
+                .count(),
             1
         );
         assert_eq!(
