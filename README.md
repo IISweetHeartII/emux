@@ -2,7 +2,7 @@
 
 # emux
 
-**A modern terminal multiplexer built in Rust -- zero config, session persistence, and 1,199 tests.**
+**A modern terminal multiplexer built in Rust -- zero config, session persistence, and 1,347 tests.**
 
 [![CI](https://github.com/IISweetHeartII/emux/actions/workflows/ci.yml/badge.svg)](https://github.com/IISweetHeartII/emux/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/IISweetHeartII/emux/graph/badge.svg)](https://codecov.io/gh/IISweetHeartII/emux)
@@ -12,7 +12,7 @@
 
 <!-- ![emux demo](doc/demo.gif) -->
 
-[Install](#installation) · [Quick Start](#quick-start) · [Keybindings](#keybindings) · [Config](#configuration) · [Contributing](CONTRIBUTING.md)
+[Install](#installation) · [Quick Start](#quick-start) · [Keybindings](#keybindings) · [Config](#configuration) · [Docs](#documentation) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -25,10 +25,12 @@ Terminal multiplexers haven't changed much in decades. tmux requires cryptic con
 **emux** takes a different approach:
 
 - **Zero config.** Sensible defaults, One Dark theme, intuitive keybindings. Works perfectly out of the box.
-- **Thoroughly tested.** 1,199 tests, 45 golden snapshot tests, 3,993 fuzz corpus files. The VT parser has been fuzz-tested to handle any byte sequence without panicking.
+- **Thoroughly tested.** 1,347 tests, 45 golden snapshot tests, 3,993 fuzz corpus files. The VT parser has been fuzz-tested to handle any byte sequence without panicking.
 - **Cross-platform.** macOS, Linux, WSL, and Windows (ConPTY) from a single codebase.
 - **Session persistence.** Daemon mode keeps sessions alive after disconnect. Detach, go home, reattach.
 - **Scriptable.** IPC socket API with length-prefixed JSON -- perfect for automation and AI agent integration.
+- **AI-native.** Built-in Claude Code agent protocol, OSC notification support, and IPC API for AI tool orchestration.
+- **Clipboard that works.** Transparent OSC 52 clipboard passthrough -- copy/paste works with mouse, keyboard, and across SSH.
 
 ---
 
@@ -214,6 +216,18 @@ Script emux from external tools via a Unix socket with length-prefixed JSON mess
 
 Available IPC commands: `Ping`, `GetVersion`, `Resize`, `Detach`, `ListSessions`, `KillSession`, `SpawnPane`, `KillPane`, `FocusPane`, `KeyInput`.
 
+### AI Agent Integration
+
+The IPC protocol is designed for AI tool orchestration. AI agents (such as Claude Code) can programmatically split panes, send keystrokes, capture pane contents, and list running panes -- enabling fully automated terminal workflows. Supported agent commands include `SplitPane`, `CapturePane`, `SendKeys`, and `ListPanes`. OSC 9/99/777 notifications alert agents when long-running tasks complete.
+
+### Project-Aware Workspaces
+
+emux automatically detects your project's git root and sets the working directory accordingly. The status bar displays the current branch name, so you always know which repository context you're in.
+
+### Status Bar
+
+A Powerline-style status bar shows the session name, open tabs, OSC notifications, current time, and hostname. Fully themeable via `config.toml` with `accent`, `border_active`, `border_inactive`, `statusbar_bg`, and `powerline` color options.
+
 ### Cross-Platform
 
 - **macOS** -- native PTY via `forkpty`
@@ -320,7 +334,7 @@ Each crate can be compiled and tested in isolation, making it straightforward to
 
 ## Testing
 
-emux ships with **1,199 tests**, **3,993 fuzz corpus files**, and **45 golden snapshot tests**.
+emux ships with **1,347 tests**, **3,993 fuzz corpus files**, and **45 golden snapshot tests**.
 
 ```sh
 # Run all tests
@@ -370,8 +384,14 @@ cargo +nightly fuzz run fuzz_terminal
 | IPC / scriptable     | Yes        | Yes        | Yes        | No         |
 | Cross-platform       | Yes        | Unix       | Unix       | Unix       |
 | Config format        | TOML       | Custom     | KDL        | Custom     |
-| Automated tests      | 1,199      | ~0         | ~400       | ~0         |
+| Automated tests      | 1,347      | ~0         | ~400       | ~0         |
+| AI agent protocol    | Yes        | No         | No         | No         |
+| OSC 52 clipboard     | Yes        | Partial    | No         | No         |
 | Fuzz tested          | Yes        | No         | No         | No         |
+| Synchronized panes   | Yes        | Yes        | No         | No         |
+| Shell integration    | Yes        | No         | No         | No         |
+| Session recording    | Yes        | No         | No         | No         |
+| Smart selection      | Yes        | Plugin     | No         | No         |
 
 ---
 
@@ -380,10 +400,26 @@ cargo +nightly fuzz run fuzz_terminal
 | Metric                   | Target                   |
 |--------------------------|--------------------------|
 | Input-to-pixel latency   | < 8 ms (120 fps)         |
-| VT parse throughput      | > 500 MB/s               |
+| VT parse throughput      | > 500 MB/s (achieved: 598 MB/s) |
 | Memory per pane          | < 5 MB (10k scrollback)  |
 | Cold start               | < 50 ms                  |
 | Release binary size      | < 2 MB                   |
+
+---
+
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Getting Started](doc/GETTING_STARTED.md) | Installation, first session, basic navigation |
+| [Configuration](doc/CONFIGURATION.md) | Full config reference with examples |
+| [Keybindings](doc/KEYBINDINGS.md) | All keybindings, remapping, modifier syntax |
+| [AI Integration](doc/AI_INTEGRATION.md) | Claude Code, agent teams, OSC notifications |
+| [IPC Protocol](doc/IPC_PROTOCOL.md) | Complete API reference for automation |
+| [Layout Templates](doc/LAYOUT_TEMPLATES.md) | .emux.toml project layouts |
+| [Shell Integration](doc/SHELL_INTEGRATION.md) | OSC 133, hint mode, smart selection |
+| [Session Recording](doc/RECORDING.md) | Record and replay terminal sessions |
+| [Windows](doc/WINDOWS.md) | Windows-specific setup and troubleshooting |
 
 ---
 

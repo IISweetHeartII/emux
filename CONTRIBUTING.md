@@ -29,7 +29,7 @@ cargo run --release
 
 ## Running Tests
 
-emux has 1,199 automated tests. Every PR must pass all of them.
+emux has 1,347 automated tests. Every PR must pass all of them.
 
 ```sh
 # Run the full test suite
