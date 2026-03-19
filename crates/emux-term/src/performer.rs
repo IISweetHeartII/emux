@@ -10,14 +10,14 @@
 //!   scroll (SU/SD), insert/delete (ICH/DCH/IL/DL), SGR, modes (SM/RM),
 //!   margins (DECSTBM/DECSLRM), and more.
 //! - **ESC**: IND, NEL, RI, HTS, DECSC/DECRC, RIS, DECALN, charset designation.
-//! - **OSC**: window title (0/2), working directory (7).
+//! - **OSC**: window title (0/2), working directory (7), clipboard (52).
 
 use emux_vt::{Action, Charset, Performer as VtPerformer};
 
 use crate::color::Color;
 use crate::grid::UnderlineStyle;
 use crate::modes::MouseMode;
-use crate::screen::{ClearTabStop, EraseDisplay, EraseLine, Screen};
+use crate::screen::{ClearTabStop, EraseDisplay, EraseLine, Screen, ShellMarkKind};
 
 /// Terminal Screen implements `VtPerformer` to handle parsed VT sequences.
 impl VtPerformer for Screen {
@@ -32,7 +32,7 @@ impl VtPerformer for Screen {
                 ignore,
             } => {
                 if !ignore {
-                    self.handle_csi(&params, &intermediates, action);
+                    self.handle_csi(&params, intermediates.as_slice(), action);
                 }
             }
             Action::EscDispatch {
@@ -41,7 +41,7 @@ impl VtPerformer for Screen {
                 ignore,
             } => {
                 if !ignore {
-                    self.handle_esc(&intermediates, byte);
+                    self.handle_esc(intermediates.as_slice(), byte);
                 }
             }
             Action::OscDispatch(parts) => {
@@ -609,10 +609,98 @@ impl Screen {
                     self.hyperlink = None;
                 }
             }
-            // "133": Semantic prompt markers (OSC 133;X)
-            // A = prompt start, B = command start, C = output start,
-            // D;exitcode = command finished.
-            // For now, just accept these without crashing.
+            "9" => {
+                // OSC 9: Desktop notification (iTerm2 style)
+                // Format: OSC 9;message ST
+                let body = if parts.len() > 1 {
+                    String::from_utf8_lossy(&parts[1]).to_string()
+                } else {
+                    String::new()
+                };
+                self.push_notification(String::new(), body);
+            }
+            "99" => {
+                // OSC 99: Extended notification (kitty style)
+                // Format: OSC 99;key=value:key=value;body ST
+                // Simplified: we treat the last part as the body.
+                let body = if parts.len() > 2 {
+                    String::from_utf8_lossy(&parts[2]).to_string()
+                } else if parts.len() > 1 {
+                    String::from_utf8_lossy(&parts[1]).to_string()
+                } else {
+                    String::new()
+                };
+                self.push_notification(String::new(), body);
+            }
+            "777" => {
+                // OSC 777: Notification (rxvt-unicode style)
+                // Format: OSC 777;notify;title;body ST
+                if parts.len() >= 2 {
+                    let subcmd = std::str::from_utf8(&parts[1]).unwrap_or("");
+                    if subcmd == "notify" {
+                        let title = if parts.len() > 2 {
+                            String::from_utf8_lossy(&parts[2]).to_string()
+                        } else {
+                            String::new()
+                        };
+                        let body = if parts.len() > 3 {
+                            String::from_utf8_lossy(&parts[3]).to_string()
+                        } else {
+                            String::new()
+                        };
+                        self.push_notification(title, body);
+                    }
+                }
+            }
+            "52" => {
+                // OSC 52: clipboard access
+                // Format: OSC 52;selection;data ST
+                // selection is typically "c" (clipboard) or "p" (primary)
+                // data is "?" for query or base64-encoded text for set
+                if parts.len() >= 3 {
+                    let data = std::str::from_utf8(&parts[2]).unwrap_or("");
+                    if data == "?" {
+                        // Query clipboard: pass through to outer terminal
+                        self.query_clipboard();
+                    } else {
+                        // Set clipboard: decode base64 and store, also passthrough
+                        if let Some(decoded) = crate::selection::base64_decode(data) {
+                            if let Ok(text) = String::from_utf8(decoded) {
+                                self.set_clipboard(text);
+                            }
+                            // Invalid UTF-8 after valid base64 is silently ignored
+                        }
+                        // Invalid base64 is silently ignored
+                    }
+                } else if parts.len() == 2 {
+                    // OSC 52;selection ST with no data — treat as query
+                    self.query_clipboard();
+                }
+            }
+            "133" => {
+                // OSC 133: Semantic prompt / shell integration markers.
+                // Format: OSC 133;X ST  or  OSC 133;D;exitcode ST
+                if parts.len() >= 2 {
+                    let marker = std::str::from_utf8(&parts[1]).unwrap_or("");
+                    match marker {
+                        "A" => self.add_shell_mark(ShellMarkKind::PromptStart),
+                        "B" => self.add_shell_mark(ShellMarkKind::CommandStart),
+                        "C" => self.add_shell_mark(ShellMarkKind::OutputStart),
+                        "D" => {
+                            let exit_code = if parts.len() >= 3 {
+                                std::str::from_utf8(&parts[2])
+                                    .unwrap_or("0")
+                                    .parse::<i32>()
+                                    .unwrap_or(0)
+                            } else {
+                                0
+                            };
+                            self.add_shell_mark(ShellMarkKind::CommandFinished { exit_code });
+                        }
+                        _ => {} // Unknown marker letter
+                    }
+                }
+            }
             _ => {} // Unhandled OSC
         }
     }
@@ -1160,6 +1248,266 @@ mod tests {
     }
 
     // ── RIS resets all modes ────────────────────────────────────────
+
+    // ── OSC notification tests ─────────────────────────────────────
+
+    #[test]
+    fn osc9_notification() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]9;Hello from iTerm2\x07");
+        assert!(s.has_unread_notification);
+        assert_eq!(s.notifications.len(), 1);
+        assert_eq!(s.notifications[0].title, "");
+        assert_eq!(s.notifications[0].body, "Hello from iTerm2");
+    }
+
+    #[test]
+    fn osc99_notification() {
+        let mut s = Screen::new(80, 25);
+        // kitty style: OSC 99 ; params ; body ST
+        feed(&mut s, b"\x1b]99;i=1;Build complete\x07");
+        assert!(s.has_unread_notification);
+        assert_eq!(s.notifications.len(), 1);
+        assert_eq!(s.notifications[0].body, "Build complete");
+    }
+
+    #[test]
+    fn osc777_notification() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]777;notify;My Title;My Body\x07");
+        assert!(s.has_unread_notification);
+        assert_eq!(s.notifications.len(), 1);
+        assert_eq!(s.notifications[0].title, "My Title");
+        assert_eq!(s.notifications[0].body, "My Body");
+    }
+
+    #[test]
+    fn osc777_notification_no_body() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]777;notify;Title Only\x07");
+        assert!(s.has_unread_notification);
+        assert_eq!(s.notifications.len(), 1);
+        assert_eq!(s.notifications[0].title, "Title Only");
+        assert_eq!(s.notifications[0].body, "");
+    }
+
+    #[test]
+    fn osc777_non_notify_ignored() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]777;other;stuff\x07");
+        assert!(!s.has_unread_notification);
+        assert_eq!(s.notifications.len(), 0);
+    }
+
+    #[test]
+    fn multiple_notifications() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]9;First\x07");
+        feed(&mut s, b"\x1b]9;Second\x07");
+        assert_eq!(s.notifications.len(), 2);
+        assert_eq!(s.notifications[0].body, "First");
+        assert_eq!(s.notifications[1].body, "Second");
+    }
+
+    #[test]
+    fn clear_unread_notifications() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]9;Hello\x07");
+        assert!(s.has_unread_notification);
+        s.clear_unread_notifications();
+        assert!(!s.has_unread_notification);
+        // Notifications still present, just marked read
+        assert_eq!(s.notifications.len(), 1);
+    }
+
+    #[test]
+    fn drain_notifications() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]9;Hello\x07");
+        feed(&mut s, b"\x1b]9;World\x07");
+        let drained = s.drain_notifications();
+        assert_eq!(drained.len(), 2);
+        assert!(!s.has_unread_notification);
+        assert_eq!(s.notifications.len(), 0);
+    }
+
+    // ── OSC 52 clipboard tests ──────────────────────────────────────
+
+    #[test]
+    fn osc52_set_clipboard() {
+        let mut s = Screen::new(80, 25);
+        // "hello" in base64 is "aGVsbG8="
+        feed(&mut s, b"\x1b]52;c;aGVsbG8=\x07");
+        assert_eq!(s.clipboard.as_deref(), Some("hello"));
+    }
+
+    #[test]
+    fn osc52_query_clipboard() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]52;c;?\x07");
+        // Should queue a passthrough query
+        let pt = s.drain_passthrough();
+        assert_eq!(pt.len(), 1);
+        assert_eq!(pt[0], b"\x1b]52;c;?\x1b\\");
+        // Clipboard should remain unset
+        assert!(s.clipboard.is_none());
+    }
+
+    #[test]
+    fn osc52_passthrough_generated() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]52;c;aGVsbG8=\x07");
+        let pt = s.drain_passthrough();
+        assert_eq!(pt.len(), 1);
+        // Passthrough should be a well-formed OSC 52 sequence
+        let seq = String::from_utf8(pt[0].clone()).unwrap();
+        assert!(seq.starts_with("\x1b]52;c;"));
+        assert!(seq.ends_with("\x1b\\"));
+        assert!(seq.contains("aGVsbG8="));
+    }
+
+    #[test]
+    fn osc52_empty_clipboard() {
+        let mut s = Screen::new(80, 25);
+        // Empty string in base64 is "" (zero bytes)
+        feed(&mut s, b"\x1b]52;c;\x07");
+        // Empty data with no "?" should be treated as empty base64 = empty string
+        assert_eq!(s.clipboard.as_deref(), Some(""));
+    }
+
+    #[test]
+    fn osc52_invalid_base64_ignored() {
+        let mut s = Screen::new(80, 25);
+        // "!!!!" is not valid base64
+        feed(&mut s, b"\x1b]52;c;!!!!\x07");
+        // Should be silently ignored
+        assert!(s.clipboard.is_none());
+        assert!(s.pending_passthrough.is_empty());
+    }
+
+    #[test]
+    fn osc52_drain_passthrough_clears() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]52;c;aGVsbG8=\x07");
+        let pt = s.drain_passthrough();
+        assert_eq!(pt.len(), 1);
+        // Second drain should be empty
+        let pt2 = s.drain_passthrough();
+        assert!(pt2.is_empty());
+    }
+
+    #[test]
+    fn osc52_integration_parser_to_screen() {
+        // Full integration: feed OSC 52 through the parser into screen,
+        // verify both clipboard storage and passthrough generation.
+        let mut s = Screen::new(80, 25);
+        let mut parser = Parser::new();
+        // "world" base64 = "d29ybGQ="
+        let input = b"\x1b]52;c;d29ybGQ=\x07";
+        parser.advance(&mut s, input);
+
+        // Clipboard should be set
+        assert_eq!(s.clipboard.as_deref(), Some("world"));
+
+        // Passthrough should contain the reconstructed OSC 52 sequence
+        let pt = s.drain_passthrough();
+        assert_eq!(pt.len(), 1);
+        let seq = String::from_utf8(pt[0].clone()).unwrap();
+        assert!(seq.starts_with("\x1b]52;c;"));
+        assert!(seq.contains("d29ybGQ="));
+    }
+
+    // ── OSC 133 shell integration tests ─────────────────────────────
+
+    #[test]
+    fn osc133_prompt_start() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]133;A\x07");
+        assert_eq!(s.shell_marks.len(), 1);
+        assert_eq!(s.shell_marks[0].kind, crate::screen::ShellMarkKind::PromptStart);
+    }
+
+    #[test]
+    fn osc133_command_start() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]133;B\x07");
+        assert_eq!(s.shell_marks.len(), 1);
+        assert_eq!(s.shell_marks[0].kind, crate::screen::ShellMarkKind::CommandStart);
+    }
+
+    #[test]
+    fn osc133_output_start() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]133;C\x07");
+        assert_eq!(s.shell_marks.len(), 1);
+        assert_eq!(s.shell_marks[0].kind, crate::screen::ShellMarkKind::OutputStart);
+    }
+
+    #[test]
+    fn osc133_command_finished_with_exit_code() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]133;D;0\x07");
+        assert_eq!(s.shell_marks.len(), 1);
+        assert_eq!(
+            s.shell_marks[0].kind,
+            crate::screen::ShellMarkKind::CommandFinished { exit_code: 0 }
+        );
+    }
+
+    #[test]
+    fn osc133_command_finished_nonzero() {
+        let mut s = Screen::new(80, 25);
+        feed(&mut s, b"\x1b]133;D;1\x07");
+        assert_eq!(s.shell_marks.len(), 1);
+        assert_eq!(
+            s.shell_marks[0].kind,
+            crate::screen::ShellMarkKind::CommandFinished { exit_code: 1 }
+        );
+    }
+
+    #[test]
+    fn osc133_prev_next_mark_navigation() {
+        let mut s = Screen::new(80, 25);
+        // Place cursor at different rows and add marks
+        s.cursor.row = 0;
+        s.add_shell_mark(crate::screen::ShellMarkKind::PromptStart);
+        s.cursor.row = 5;
+        s.add_shell_mark(crate::screen::ShellMarkKind::CommandStart);
+        s.cursor.row = 10;
+        s.add_shell_mark(crate::screen::ShellMarkKind::OutputStart);
+
+        // prev_mark from row 10 should find the mark at row 5
+        let prev = s.prev_mark(10).unwrap();
+        assert_eq!(prev.row, 5);
+        assert_eq!(prev.kind, crate::screen::ShellMarkKind::CommandStart);
+
+        // next_mark from row 0 should find the mark at row 5
+        let next = s.next_mark(0).unwrap();
+        assert_eq!(next.row, 5);
+        assert_eq!(next.kind, crate::screen::ShellMarkKind::CommandStart);
+
+        // prev_mark from row 0 should be None
+        assert!(s.prev_mark(0).is_none());
+
+        // next_mark from row 10 should be None
+        assert!(s.next_mark(10).is_none());
+    }
+
+    #[test]
+    fn osc133_last_command_exit_code() {
+        let mut s = Screen::new(80, 25);
+        // No marks yet
+        assert!(s.last_command_exit_code().is_none());
+
+        feed(&mut s, b"\x1b]133;D;0\x07");
+        assert_eq!(s.last_command_exit_code(), Some(0));
+
+        feed(&mut s, b"\x1b]133;A\x07"); // PromptStart -- not a CommandFinished
+        assert_eq!(s.last_command_exit_code(), Some(0)); // still 0
+
+        feed(&mut s, b"\x1b]133;D;42\x07");
+        assert_eq!(s.last_command_exit_code(), Some(42));
+    }
 
     #[test]
     fn ris_resets_all_modes() {

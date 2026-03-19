@@ -9,6 +9,8 @@
 //! Wide (CJK) characters, autowrap, insert mode, left/right margins
 //! (DECSLRM), and origin mode (DECOM) are all handled here.
 
+use std::time::Instant;
+
 use emux_vt::Charset;
 use serde::{Deserialize, Serialize};
 
@@ -16,6 +18,44 @@ use crate::color::Color;
 use crate::cursor::{Cursor, SavedCursor};
 use crate::grid::{CellAttrs, Grid};
 use crate::modes::Modes;
+
+/// Type of shell integration mark (OSC 133 semantic zones).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShellMarkKind {
+    /// Prompt start (`\e]133;A\a`): the shell is showing a prompt.
+    PromptStart,
+    /// Command start (`\e]133;B\a`): the user pressed Enter.
+    CommandStart,
+    /// Output start (`\e]133;C\a`): the command is producing output.
+    OutputStart,
+    /// Command finished (`\e]133;D;exitcode\a`): the command exited.
+    CommandFinished {
+        /// Process exit code (0 = success).
+        exit_code: i32,
+    },
+}
+
+/// A mark in the scrollback tied to a shell command boundary.
+#[derive(Debug, Clone)]
+pub struct ShellMark {
+    /// The kind of semantic zone boundary.
+    pub kind: ShellMarkKind,
+    /// Viewport row where the mark was placed.
+    pub row: usize,
+    /// When the mark was recorded.
+    pub timestamp: Instant,
+}
+
+/// A notification received via OSC escape sequences (OSC 9, 99, 777).
+#[derive(Debug, Clone)]
+pub struct Notification {
+    /// Notification title (may be empty for OSC 9).
+    pub title: String,
+    /// Notification body text.
+    pub body: String,
+    /// When the notification was received.
+    pub timestamp: Instant,
+}
 
 const DEFAULT_TAB_INTERVAL: usize = 8;
 
@@ -195,6 +235,27 @@ pub struct Screen {
     #[serde(skip)]
     search: Option<SearchState>,
 
+    // ── Notifications ─────────────────────────────────────────────────
+    /// Notifications received via OSC 9 / 99 / 777.
+    #[serde(skip)]
+    pub notifications: Vec<Notification>,
+    /// Whether there are unread notifications.
+    #[serde(skip)]
+    pub has_unread_notification: bool,
+
+    // ── Shell integration (OSC 133) ──────────────────────────────────
+    /// Shell integration marks (semantic prompt zones).
+    #[serde(skip)]
+    pub shell_marks: Vec<ShellMark>,
+
+    // ── Clipboard (OSC 52) ─────────────────────────────────────────
+    /// Last clipboard content set via OSC 52.
+    #[serde(skip)]
+    pub clipboard: Option<String>,
+    /// Escape sequences to pass through to the outer terminal (e.g. OSC 52).
+    #[serde(skip)]
+    pub pending_passthrough: Vec<Vec<u8>>,
+
     // ── Damage tracking ─────────────────────────────────────────────
     /// Accumulated damage regions since last `take_damage()`.
     #[serde(skip)]
@@ -244,7 +305,12 @@ impl Screen {
             alt_grid: Grid::new(cols, rows),
             alt_cursor: Cursor::default(),
             alt_saved_cursor: None,
+            notifications: Vec::new(),
+            has_unread_notification: false,
             search: None,
+            shell_marks: Vec::new(),
+            clipboard: None,
+            pending_passthrough: Vec::new(),
             damage_list: Vec::new(),
             damage_mode: DamageMode::default(),
         }
@@ -1321,6 +1387,80 @@ impl Screen {
             }
         }
     }
+    // ── Shell integration (OSC 133) ──────────────────────────────────
+
+    /// Record a shell integration mark at the current cursor row.
+    pub fn add_shell_mark(&mut self, kind: ShellMarkKind) {
+        self.shell_marks.push(ShellMark {
+            kind,
+            row: self.cursor.row,
+            timestamp: Instant::now(),
+        });
+    }
+
+    /// Find the previous shell mark before the given row (searching backwards).
+    pub fn prev_mark(&self, from_row: usize) -> Option<&ShellMark> {
+        self.shell_marks.iter().rev().find(|m| m.row < from_row)
+    }
+
+    /// Find the next shell mark after the given row (searching forwards).
+    pub fn next_mark(&self, from_row: usize) -> Option<&ShellMark> {
+        self.shell_marks.iter().find(|m| m.row > from_row)
+    }
+
+    /// Get the exit code of the most recent `CommandFinished` mark, if any.
+    pub fn last_command_exit_code(&self) -> Option<i32> {
+        self.shell_marks.iter().rev().find_map(|m| match m.kind {
+            ShellMarkKind::CommandFinished { exit_code } => Some(exit_code),
+            _ => None,
+        })
+    }
+
+    // ── Notifications ─────────────────────────────────────────────────
+
+    /// Push a notification (from OSC 9/99/777).
+    pub fn push_notification(&mut self, title: String, body: String) {
+        self.notifications.push(Notification {
+            title,
+            body,
+            timestamp: Instant::now(),
+        });
+        self.has_unread_notification = true;
+    }
+
+    /// Clear the unread notification flag (mark all as read).
+    pub fn clear_unread_notifications(&mut self) {
+        self.has_unread_notification = false;
+    }
+
+    /// Drain all notifications, returning them and clearing the list.
+    pub fn drain_notifications(&mut self) -> Vec<Notification> {
+        self.has_unread_notification = false;
+        std::mem::take(&mut self.notifications)
+    }
+
+    // ── Clipboard (OSC 52) ────────────────────────────────────────
+
+    /// Store clipboard content from OSC 52 and queue a passthrough sequence
+    /// so the outer terminal can also set the system clipboard.
+    pub fn set_clipboard(&mut self, content: String) {
+        let seq = crate::selection::osc52_clipboard(&content);
+        self.clipboard = Some(content);
+        self.pending_passthrough.push(seq);
+    }
+
+    /// Queue an OSC 52 query passthrough to the outer terminal.
+    pub fn query_clipboard(&mut self) {
+        let mut seq = Vec::new();
+        seq.extend_from_slice(b"\x1b]52;c;?\x1b\\");
+        self.pending_passthrough.push(seq);
+    }
+
+    /// Drain all pending passthrough sequences, returning them and clearing the queue.
+    pub fn drain_passthrough(&mut self) -> Vec<Vec<u8>> {
+        std::mem::take(&mut self.pending_passthrough)
+    }
+
     // ── Damage tracking ─────────────────────────────────────────────
 
     /// Record damage for a cell-level change.

@@ -208,8 +208,74 @@ pub fn osc52_clipboard(text: &str) -> Vec<u8> {
     seq
 }
 
+/// Minimal base64 decoder (no external dependency needed).
+/// Returns `None` if the input is not valid base64.
+pub fn base64_decode(input: &str) -> Option<Vec<u8>> {
+    const DECODE: [u8; 256] = {
+        let mut table = [0xFFu8; 256];
+        let mut i = 0u8;
+        while i < 26 {
+            table[(b'A' + i) as usize] = i;
+            i += 1;
+        }
+        i = 0;
+        while i < 26 {
+            table[(b'a' + i) as usize] = 26 + i;
+            i += 1;
+        }
+        i = 0;
+        while i < 10 {
+            table[(b'0' + i) as usize] = 52 + i;
+            i += 1;
+        }
+        table[b'+' as usize] = 62;
+        table[b'/' as usize] = 63;
+        table
+    };
+
+    let input = input.trim_end_matches('=');
+    let mut out = Vec::with_capacity(input.len() * 3 / 4);
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    while i + 3 < bytes.len() {
+        let a = DECODE[bytes[i] as usize];
+        let b = DECODE[bytes[i + 1] as usize];
+        let c = DECODE[bytes[i + 2] as usize];
+        let d = DECODE[bytes[i + 3] as usize];
+        if a == 0xFF || b == 0xFF || c == 0xFF || d == 0xFF {
+            return None;
+        }
+        let triple = (a as u32) << 18 | (b as u32) << 12 | (c as u32) << 6 | d as u32;
+        out.push((triple >> 16) as u8);
+        out.push((triple >> 8) as u8);
+        out.push(triple as u8);
+        i += 4;
+    }
+    let rem = bytes.len() - i;
+    if rem == 2 {
+        let a = DECODE[bytes[i] as usize];
+        let b = DECODE[bytes[i + 1] as usize];
+        if a == 0xFF || b == 0xFF {
+            return None;
+        }
+        out.push((a << 2) | (b >> 4));
+    } else if rem == 3 {
+        let a = DECODE[bytes[i] as usize];
+        let b = DECODE[bytes[i + 1] as usize];
+        let c = DECODE[bytes[i + 2] as usize];
+        if a == 0xFF || b == 0xFF || c == 0xFF {
+            return None;
+        }
+        out.push((a << 2) | (b >> 4));
+        out.push((b << 4) | (c >> 2));
+    } else if rem == 1 {
+        return None; // invalid
+    }
+    Some(out)
+}
+
 /// Minimal base64 encoder (no external dependency needed).
-fn base64_encode(input: &[u8]) -> String {
+pub fn base64_encode(input: &[u8]) -> String {
     const CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
     for chunk in input.chunks(3) {
@@ -422,6 +488,34 @@ mod tests {
         assert_eq!(base64_encode(b"foob"), "Zm9vYg==");
         assert_eq!(base64_encode(b"fooba"), "Zm9vYmE=");
         assert_eq!(base64_encode(b"foobar"), "Zm9vYmFy");
+    }
+
+    #[test]
+    fn base64_decode_known_values() {
+        assert_eq!(base64_decode("Zg==").unwrap(), b"f");
+        assert_eq!(base64_decode("Zm8=").unwrap(), b"fo");
+        assert_eq!(base64_decode("Zm9v").unwrap(), b"foo");
+        assert_eq!(base64_decode("Zm9vYg==").unwrap(), b"foob");
+        assert_eq!(base64_decode("Zm9vYmE=").unwrap(), b"fooba");
+        assert_eq!(base64_decode("Zm9vYmFy").unwrap(), b"foobar");
+    }
+
+    #[test]
+    fn base64_decode_empty() {
+        assert_eq!(base64_decode("").unwrap(), b"");
+    }
+
+    #[test]
+    fn base64_decode_invalid() {
+        assert!(base64_decode("!!!!").is_none());
+    }
+
+    #[test]
+    fn base64_roundtrip() {
+        let original = b"Hello, world! This is a test of OSC 52 clipboard.";
+        let encoded = base64_encode(original);
+        let decoded = base64_decode(&encoded).unwrap();
+        assert_eq!(decoded, original);
     }
 
     #[test]
