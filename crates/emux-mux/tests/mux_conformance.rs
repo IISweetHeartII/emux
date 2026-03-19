@@ -33,7 +33,9 @@ fn horizontal_split_creates_two_panes() {
     assert_eq!(pos0.cols, 80);
     assert_eq!(pos1.cols, 80);
     assert_eq!(pos0.rows + pos1.rows, 24);
-    assert!(pos0.rows >= 11 && pos0.rows <= 13); // ~12
+    // ±1 tolerance: integer division of odd totals (e.g. 24/2=12, but separator
+    // or rounding may shift one row between panes). The exact sum is asserted above.
+    assert!(pos0.rows >= 11 && pos0.rows <= 13);
 }
 
 #[test]
@@ -55,7 +57,8 @@ fn vertical_split_creates_two_panes() {
     assert_eq!(pos0.rows, 24);
     assert_eq!(pos1.rows, 24);
     assert_eq!(pos0.cols + pos1.cols, 80);
-    assert!(pos0.cols >= 39 && pos0.cols <= 41); // ~40
+    // ±1 tolerance: integer division rounding. The exact sum is asserted above.
+    assert!(pos0.cols >= 39 && pos0.cols <= 41);
 }
 
 #[test]
