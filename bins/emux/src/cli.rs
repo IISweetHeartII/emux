@@ -224,13 +224,22 @@ pub(crate) fn cmd_kill(session_name: &str) -> Result<(), AppError> {
             let _ = client.send(ClientMessage::KillSession {
                 name: session_name.to_owned(),
             });
-            // Read the Ack (best-effort).
             let _ = client.recv();
+            // Give daemon time to shut down and clean its socket.
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            // Remove daemon socket if still present.
+            let _ = std::fs::remove_file(&path);
+            // Also remove agent socket.
+            let agent_path =
+                crate::daemon::socket_dir().join(format!("emux-agent-{session_name}.sock"));
+            let _ = std::fs::remove_file(&agent_path);
             println!("Session '{}' killed.", session_name);
         }
         Err(_) => {
-            // Socket exists but nothing is listening — clean up.
             let _ = std::fs::remove_file(&path);
+            let agent_path =
+                crate::daemon::socket_dir().join(format!("emux-agent-{session_name}.sock"));
+            let _ = std::fs::remove_file(&agent_path);
             println!("Cleaned up stale session '{}'.", session_name);
         }
     }

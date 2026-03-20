@@ -32,6 +32,12 @@ pub enum ClientMessage {
         pane_id: u32,
     },
     Detach,
+    /// Attach to the session as a rendering client.
+    /// The daemon will start streaming PTY output to this client.
+    Attach {
+        cols: u16,
+        rows: u16,
+    },
     ListSessions,
     KillSession {
         name: String,
@@ -138,4 +144,17 @@ pub enum ServerMessage {
     PaneInfo {
         pane: PaneEntry,
     },
+
+    // -- Streaming messages (daemon → attached client) --
+    /// Raw PTY output from a pane. The client feeds this through its own
+    /// Parser + Screen to render.
+    PtyOutput {
+        pane_id: u32,
+        data: Vec<u8>,
+    },
+    /// Session layout changed (pane added/removed/resized). Client should
+    /// re-request ListPanes to update its view.
+    LayoutChanged,
+    /// The daemon is shutting down.
+    SessionEnded,
 }

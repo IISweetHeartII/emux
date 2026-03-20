@@ -11,8 +11,14 @@ repository.workspace = true
 emux-mux.workspace = true
 emux-config.workspace = true
 emux-ipc.workspace = true
+emux-pty.workspace = true
+emux-term.workspace = true
+emux-vt.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 serde_json.workspace = true

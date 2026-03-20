@@ -1,13 +1,14 @@
 use std::io::Write;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use emux_mux::SplitDirection;
 use emux_mux::tab::FocusDirection;
+use emux_mux::{PaneId, SplitDirection};
 use emux_term::search;
+use emux_term::selection::{Selection, SelectionMode, SelectionPoint};
 
 use crate::AppError;
-use crate::app::{Action, App, InputMode};
-use crate::operations::{close_active_pane, new_tab, split_pane};
+use crate::app::{Action, App, CopyModeState, InputMode};
+use crate::operations::{close_active_pane, mark_all_dirty, new_tab, split_pane};
 
 // ---------------------------------------------------------------------------
 // Parsed keybinding cache
@@ -30,6 +31,9 @@ pub(crate) struct ParsedBindings {
     pub(crate) search: Option<(KeyModifiers, KeyCode)>,
     pub(crate) toggle_fullscreen: Option<(KeyModifiers, KeyCode)>,
     pub(crate) toggle_float: Option<(KeyModifiers, KeyCode)>,
+    pub(crate) scroll_up: Option<(KeyModifiers, KeyCode)>,
+    pub(crate) scroll_down: Option<(KeyModifiers, KeyCode)>,
+    pub(crate) copy_mode: Option<(KeyModifiers, KeyCode)>,
 }
 
 impl ParsedBindings {
@@ -50,6 +54,9 @@ impl ParsedBindings {
             search: parse_keybinding(&keys.search),
             toggle_fullscreen: parse_keybinding(&keys.toggle_fullscreen),
             toggle_float: parse_keybinding(&keys.toggle_float),
+            scroll_up: parse_keybinding(&keys.scroll_up),
+            scroll_down: parse_keybinding(&keys.scroll_down),
+            copy_mode: parse_keybinding(&keys.copy_mode),
         }
     }
 }
@@ -162,6 +169,11 @@ pub(crate) fn handle_keybinding<W: Write>(
     _cols: u16,
     _rows: u16,
 ) -> Result<Action, AppError> {
+    // ── Copy mode ─────────────────────────────────────────────────
+    if app.input_mode == InputMode::Copy {
+        return handle_copy_key(app, key);
+    }
+
     // ── Search mode ────────────────────────────────────────────────
     // While in search mode, keys are interpreted as search input rather
     // than normal keybindings.
@@ -208,38 +220,45 @@ pub(crate) fn handle_keybinding<W: Write>(
         app.session
             .active_tab_mut()
             .focus_direction(FocusDirection::Up);
+        mark_all_dirty(app);
         return Ok(Action::Consumed);
     }
     if matches_binding(key, &bindings.focus_down) {
         app.session
             .active_tab_mut()
             .focus_direction(FocusDirection::Down);
+        mark_all_dirty(app);
         return Ok(Action::Consumed);
     }
     if matches_binding(key, &bindings.focus_left) {
         app.session
             .active_tab_mut()
             .focus_direction(FocusDirection::Left);
+        mark_all_dirty(app);
         return Ok(Action::Consumed);
     }
     if matches_binding(key, &bindings.focus_right) {
         app.session
             .active_tab_mut()
             .focus_direction(FocusDirection::Right);
+        mark_all_dirty(app);
         return Ok(Action::Consumed);
     }
     // New tab
     if matches_binding(key, &bindings.new_tab) {
         new_tab(app)?;
+        mark_all_dirty(app);
         return Ok(Action::Consumed);
     }
     // Next / prev tab
     if matches_binding(key, &bindings.next_tab) {
         app.session.next_tab();
+        mark_all_dirty(app);
         return Ok(Action::Consumed);
     }
     if matches_binding(key, &bindings.prev_tab) {
         app.session.prev_tab();
+        mark_all_dirty(app);
         return Ok(Action::Consumed);
     }
     // Close tab
@@ -251,16 +270,57 @@ pub(crate) fn handle_keybinding<W: Write>(
                 app.panes.remove(&id);
             }
         }
+        mark_all_dirty(app);
         return Ok(Action::Consumed);
     }
     // Toggle fullscreen
     if matches_binding(key, &bindings.toggle_fullscreen) {
         app.session.active_tab_mut().toggle_fullscreen();
+        mark_all_dirty(app);
         return Ok(Action::Consumed);
     }
     // Toggle floating panes
     if matches_binding(key, &bindings.toggle_float) {
         app.session.active_tab_mut().toggle_floating_panes();
+        mark_all_dirty(app);
+        return Ok(Action::Consumed);
+    }
+    // Scroll viewport up (view history)
+    if matches_binding(key, &bindings.scroll_up) {
+        if let Some(active_id) = app.session.active_tab().active_pane_id() {
+            if let Some(ps) = app.panes.get_mut(&active_id) {
+                let half_page = ps.screen.rows() / 2;
+                ps.screen.scroll_viewport_up(half_page.max(1));
+                ps.damage.mark_all();
+            }
+        }
+        return Ok(Action::Consumed);
+    }
+    // Scroll viewport down (back toward live output)
+    if matches_binding(key, &bindings.scroll_down) {
+        if let Some(active_id) = app.session.active_tab().active_pane_id() {
+            if let Some(ps) = app.panes.get_mut(&active_id) {
+                let half_page = ps.screen.rows() / 2;
+                ps.screen.scroll_viewport_down(half_page.max(1));
+                ps.damage.mark_all();
+            }
+        }
+        return Ok(Action::Consumed);
+    }
+    // Enter copy mode
+    if matches_binding(key, &bindings.copy_mode) {
+        if let Some(active_id) = app.session.active_tab().active_pane_id() {
+            if let Some(ps) = app.panes.get_mut(&active_id) {
+                app.input_mode = InputMode::Copy;
+                app.copy_mode = Some(CopyModeState {
+                    row: ps.screen.cursor.row,
+                    col: ps.screen.cursor.col,
+                    scrollback_len: ps.screen.grid.scrollback_len(),
+                    selection: None,
+                });
+                ps.damage.mark_all();
+            }
+        }
         return Ok(Action::Consumed);
     }
 
@@ -340,4 +400,262 @@ fn run_search(app: &mut App) {
         case_sensitive: false,
         regex: false,
     };
+}
+
+// ---------------------------------------------------------------------------
+// Copy mode — vi-style navigation and text selection
+// ---------------------------------------------------------------------------
+
+/// Handle a key event while in copy mode.
+fn handle_copy_key(app: &mut App, key: &KeyEvent) -> Result<Action, AppError> {
+    let active_id = app.session.active_tab().active_pane_id();
+    let Some(active_id) = active_id else {
+        return Ok(Action::Consumed);
+    };
+
+    match key.code {
+        // Exit copy mode
+        KeyCode::Esc | KeyCode::Char('q') => {
+            app.input_mode = InputMode::Normal;
+            app.copy_mode = None;
+            if let Some(ps) = app.panes.get_mut(&active_id) {
+                ps.damage.mark_all();
+            }
+        }
+        // Movement: h/j/k/l and arrows
+        KeyCode::Char('h') | KeyCode::Left => {
+            if let Some(ref mut cm) = app.copy_mode {
+                cm.col = cm.col.saturating_sub(1);
+                update_copy_selection(cm);
+                mark_active_dirty(app, active_id);
+            }
+        }
+        KeyCode::Char('j') | KeyCode::Down => {
+            if let Some(ref mut cm) = app.copy_mode {
+                if let Some(ps) = app.panes.get(&active_id) {
+                    cm.row = (cm.row + 1).min(ps.screen.rows().saturating_sub(1));
+                }
+                update_copy_selection(cm);
+                mark_active_dirty(app, active_id);
+            }
+        }
+        KeyCode::Char('k') | KeyCode::Up => {
+            if let Some(ref mut cm) = app.copy_mode {
+                cm.row = cm.row.saturating_sub(1);
+                update_copy_selection(cm);
+                mark_active_dirty(app, active_id);
+            }
+        }
+        KeyCode::Char('l') | KeyCode::Right => {
+            if let Some(ref mut cm) = app.copy_mode {
+                if let Some(ps) = app.panes.get(&active_id) {
+                    cm.col = (cm.col + 1).min(ps.screen.cols().saturating_sub(1));
+                }
+                update_copy_selection(cm);
+                mark_active_dirty(app, active_id);
+            }
+        }
+        // Start of line
+        KeyCode::Char('0') => {
+            if let Some(ref mut cm) = app.copy_mode {
+                cm.col = 0;
+                update_copy_selection(cm);
+                mark_active_dirty(app, active_id);
+            }
+        }
+        // End of line
+        KeyCode::Char('$') => {
+            if let Some(ref mut cm) = app.copy_mode {
+                if let Some(ps) = app.panes.get(&active_id) {
+                    cm.col = ps.screen.cols().saturating_sub(1);
+                }
+                update_copy_selection(cm);
+                mark_active_dirty(app, active_id);
+            }
+        }
+        // Top of screen
+        KeyCode::Char('g') => {
+            if let Some(ref mut cm) = app.copy_mode {
+                cm.row = 0;
+                update_copy_selection(cm);
+                mark_active_dirty(app, active_id);
+            }
+        }
+        // Bottom of screen
+        KeyCode::Char('G') => {
+            if let Some(ref mut cm) = app.copy_mode {
+                if let Some(ps) = app.panes.get(&active_id) {
+                    cm.row = ps.screen.rows().saturating_sub(1);
+                }
+                update_copy_selection(cm);
+                mark_active_dirty(app, active_id);
+            }
+        }
+        // Half-page up/down
+        KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            if let Some(ref mut cm) = app.copy_mode {
+                if let Some(ps) = app.panes.get(&active_id) {
+                    let half = ps.screen.rows() / 2;
+                    cm.row = cm.row.saturating_sub(half);
+                }
+                update_copy_selection(cm);
+                mark_active_dirty(app, active_id);
+            }
+        }
+        KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            if let Some(ref mut cm) = app.copy_mode {
+                if let Some(ps) = app.panes.get(&active_id) {
+                    let half = ps.screen.rows() / 2;
+                    cm.row = (cm.row + half).min(ps.screen.rows().saturating_sub(1));
+                }
+                update_copy_selection(cm);
+                mark_active_dirty(app, active_id);
+            }
+        }
+        // Toggle selection (v = normal, V = line — both use normal for simplicity)
+        KeyCode::Char('v') => {
+            if let Some(ref mut cm) = app.copy_mode {
+                if cm.selection.is_some() {
+                    cm.selection = None;
+                } else {
+                    let point = SelectionPoint::new(cm.scrollback_len + cm.row, cm.col);
+                    cm.selection = Some(Selection::start(point, SelectionMode::Normal));
+                }
+                mark_active_dirty(app, active_id);
+            }
+        }
+        // Yank (copy) selected text
+        KeyCode::Char('y') => {
+            let mut yanked_text = String::new();
+            if let Some(ref mut cm) = app.copy_mode {
+                if let Some(ref mut sel) = cm.selection {
+                    sel.finalize();
+                    if let Some(ps) = app.panes.get(&active_id) {
+                        yanked_text = sel.get_text(&ps.screen.grid);
+                    }
+                }
+            }
+            // Store yanked text for OSC 52 output by the event loop.
+            if !yanked_text.is_empty() {
+                app.yanked_text = Some(yanked_text);
+            }
+            // Exit copy mode after yank.
+            app.input_mode = InputMode::Normal;
+            app.copy_mode = None;
+            if let Some(ps) = app.panes.get_mut(&active_id) {
+                ps.damage.mark_all();
+            }
+        }
+        _ => {}
+    }
+    Ok(Action::Consumed)
+}
+
+/// Update the copy mode selection endpoint to follow the cursor.
+fn update_copy_selection(cm: &mut CopyModeState) {
+    if let Some(ref mut sel) = cm.selection {
+        let abs_row = cm.scrollback_len + cm.row;
+        sel.extend(SelectionPoint::new(abs_row, cm.col));
+    }
+}
+
+fn mark_active_dirty(app: &mut App, active_id: PaneId) {
+    if let Some(ps) = app.panes.get_mut(&active_id) {
+        ps.damage.mark_all();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    #[test]
+    fn parse_leader_d() {
+        let (mods, code) = parse_keybinding("Leader+D").unwrap();
+        assert!(mods.contains(KeyModifiers::CONTROL));
+        assert!(mods.contains(KeyModifiers::SHIFT));
+        assert_eq!(code, KeyCode::Char('D'));
+    }
+
+    #[test]
+    fn parse_ctrl_q() {
+        let (mods, code) = parse_keybinding("Ctrl+Q").unwrap();
+        assert!(mods.contains(KeyModifiers::CONTROL));
+        assert!(!mods.contains(KeyModifiers::SHIFT));
+        // 'Q' preserves the case from the binding string.
+        assert_eq!(code, KeyCode::Char('Q'));
+    }
+
+    #[test]
+    fn parse_alt_tab() {
+        let (mods, code) = parse_keybinding("Alt+Tab").unwrap();
+        assert!(mods.contains(KeyModifiers::ALT));
+        assert_eq!(code, KeyCode::Tab);
+    }
+
+    #[test]
+    fn parse_f_keys() {
+        let (_, code) = parse_keybinding("F1").unwrap();
+        assert_eq!(code, KeyCode::F(1));
+        let (_, code) = parse_keybinding("F12").unwrap();
+        assert_eq!(code, KeyCode::F(12));
+    }
+
+    #[test]
+    fn parse_special_keys() {
+        assert_eq!(parse_keybinding("Up").unwrap().1, KeyCode::Up);
+        assert_eq!(parse_keybinding("PageUp").unwrap().1, KeyCode::PageUp);
+        assert_eq!(parse_keybinding("Enter").unwrap().1, KeyCode::Enter);
+        assert_eq!(parse_keybinding("Backspace").unwrap().1, KeyCode::Backspace);
+        assert_eq!(parse_keybinding("Esc").unwrap().1, KeyCode::Esc);
+    }
+
+    #[test]
+    fn parse_leader_pageup() {
+        let (mods, code) = parse_keybinding("Leader+PageUp").unwrap();
+        assert!(mods.contains(KeyModifiers::CONTROL));
+        assert!(mods.contains(KeyModifiers::SHIFT));
+        assert_eq!(code, KeyCode::PageUp);
+    }
+
+    #[test]
+    fn parse_invalid_returns_none() {
+        assert!(parse_keybinding("").is_none());
+        assert!(parse_keybinding("Leader+").is_none());
+    }
+
+    #[test]
+    fn matches_binding_case_insensitive() {
+        let binding = Some((
+            KeyModifiers::CONTROL | KeyModifiers::SHIFT,
+            KeyCode::Char('D'),
+        ));
+        // Shift+Ctrl+d should match Leader+D
+        let key = KeyEvent::new(
+            KeyCode::Char('d'),
+            KeyModifiers::CONTROL | KeyModifiers::SHIFT,
+        );
+        assert!(matches_binding(&key, &binding));
+    }
+
+    #[test]
+    fn matches_binding_none_returns_false() {
+        let key = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::empty());
+        assert!(!matches_binding(&key, &None));
+    }
+
+    #[test]
+    fn matches_binding_wrong_key_returns_false() {
+        let binding = Some((KeyModifiers::CONTROL, KeyCode::Char('q')));
+        let key = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL);
+        assert!(!matches_binding(&key, &binding));
+    }
+
+    #[test]
+    fn matches_binding_missing_modifier_returns_false() {
+        let binding = Some((KeyModifiers::CONTROL, KeyCode::Char('q')));
+        let key = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::empty());
+        assert!(!matches_binding(&key, &binding));
+    }
 }

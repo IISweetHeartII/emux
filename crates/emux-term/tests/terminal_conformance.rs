@@ -260,6 +260,108 @@ fn print_writes_to_bottom_if_scrolled() {
     assert_eq!(t.screen.viewport_offset(), 0);
 }
 
+#[test]
+fn scroll_viewport_down_clamps_to_zero() {
+    let mut t = TestTerminal::new(80, 5);
+    for i in 0..10 {
+        t.push_str(&format!("line {}\r\n", i));
+    }
+    t.screen.scroll_viewport_up(3);
+    assert_eq!(t.screen.viewport_offset(), 3);
+    t.screen.scroll_viewport_down(2);
+    assert_eq!(t.screen.viewport_offset(), 1);
+    t.screen.scroll_viewport_down(100);
+    assert_eq!(t.screen.viewport_offset(), 0);
+}
+
+#[test]
+fn scroll_viewport_reset_snaps_to_bottom() {
+    let mut t = TestTerminal::new(80, 5);
+    for i in 0..10 {
+        t.push_str(&format!("line {}\r\n", i));
+    }
+    t.screen.scroll_viewport_up(5);
+    assert_eq!(t.screen.viewport_offset(), 5);
+    t.screen.scroll_viewport_reset();
+    assert_eq!(t.screen.viewport_offset(), 0);
+}
+
+#[test]
+fn viewport_row_returns_scrollback_when_scrolled() {
+    let mut t = TestTerminal::new(80, 3);
+    // Write 6 lines into a 3-row terminal: lines 0-2 go to scrollback,
+    // lines 3-5 are in the live grid.
+    t.push_str("AAA\r\n");
+    t.push_str("BBB\r\n");
+    t.push_str("CCC\r\n");
+    t.push_str("DDD\r\n");
+    t.push_str("EEE\r\n");
+    t.push_str("FFF");
+    // At viewport_offset=0, we see the live grid: DDD, EEE, FFF
+    let row0 = t.screen.viewport_row(0);
+    let text0: String = row0.cells.iter().take(3).map(|c| c.c).collect();
+    assert_eq!(text0, "DDD");
+
+    // Scroll up by 2: now the top should show scrollback content
+    t.screen.scroll_viewport_up(2);
+    let scrolled_row0 = t.screen.viewport_row(0);
+    let scrolled_text0: String = scrolled_row0.cells.iter().take(3).map(|c| c.c).collect();
+    assert_eq!(scrolled_text0, "BBB");
+}
+
+#[test]
+fn scroll_viewport_up_clamps_to_scrollback_len() {
+    let mut t = TestTerminal::new(80, 5);
+    // Only 3 lines of scrollback (write 8 lines into 5-row terminal)
+    for i in 0..8 {
+        t.push_str(&format!("line {}\r\n", i));
+    }
+    let sb = t.screen.grid.scrollback_len();
+    // Try to scroll up way past available scrollback
+    t.screen.scroll_viewport_up(1000);
+    assert_eq!(t.screen.viewport_offset(), sb);
+}
+
+#[test]
+fn viewport_row_with_no_scrollback() {
+    let mut t = TestTerminal::new(80, 3);
+    t.push_str("AAA\r\nBBB\r\nCCC");
+    // No scrollback exists yet
+    assert_eq!(t.screen.grid.scrollback_len(), 0);
+    assert_eq!(t.screen.viewport_offset(), 0);
+    // viewport_row should return the live grid row
+    let row0 = t.screen.viewport_row(0);
+    let text: String = row0.cells.iter().take(3).map(|c| c.c).collect();
+    assert_eq!(text, "AAA");
+}
+
+#[test]
+fn viewport_row_at_max_scroll_shows_oldest_scrollback() {
+    let mut t = TestTerminal::new(80, 3);
+    t.push_str("OLD\r\nMID\r\nNEW\r\nA\r\nB\r\nC");
+    let sb = t.screen.grid.scrollback_len();
+    assert!(sb >= 3);
+    // Scroll to max
+    t.screen.scroll_viewport_up(sb);
+    assert_eq!(t.screen.viewport_offset(), sb);
+    let row0 = t.screen.viewport_row(0);
+    let text: String = row0.cells.iter().take(3).map(|c| c.c).collect();
+    assert_eq!(text, "OLD");
+}
+
+#[test]
+fn new_output_resets_viewport_offset() {
+    let mut t = TestTerminal::new(80, 3);
+    for i in 0..10 {
+        t.push_str(&format!("line {}\r\n", i));
+    }
+    t.screen.scroll_viewport_up(3);
+    assert_eq!(t.screen.viewport_offset(), 3);
+    // New character output should reset to 0
+    t.push_str("X");
+    assert_eq!(t.screen.viewport_offset(), 0);
+}
+
 // =============================================================================
 // 2. LINEFEED / CARRIAGE RETURN / BACKSPACE (~8 tests)
 // =============================================================================

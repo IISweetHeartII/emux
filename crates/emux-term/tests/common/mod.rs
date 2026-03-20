@@ -6,6 +6,7 @@ pub struct TestTerminal {
     pub parser: Parser,
 }
 
+#[allow(dead_code)]
 impl TestTerminal {
     pub fn new(cols: usize, rows: usize) -> Self {
         Self {

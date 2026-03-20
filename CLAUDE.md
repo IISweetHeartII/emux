@@ -7,8 +7,10 @@ A terminal multiplexer written in Rust.
 - Build: `cargo build --workspace`
 - Test all: `cargo test --workspace`
 - Single test: `cargo test -p emux-vt -- test_name`
-- TDD targets (ignored tests): `cargo test --workspace -- --ignored`
-- Lint: `cargo clippy --workspace`
+- E2E tests (needs real PTY): `cargo test --workspace -- --ignored --test-threads=1`
+- Full test suite: `./scripts/full-test.sh`
+- Quick check (no E2E): `./scripts/full-test.sh --quick`
+- Lint: `cargo clippy --workspace -- -D warnings`
 - Format: `cargo fmt --all`
 - Bench: `cargo bench -p emux-vt`
 

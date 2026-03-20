@@ -17,6 +17,7 @@ use emux_term::{Color, grid::UnderlineStyle};
 // Pen-specific helpers (not shared across test files)
 // ---------------------------------------------------------------------------
 
+#[allow(dead_code)]
 trait PenAssertions {
     fn screen(&self) -> &emux_term::Screen;
 

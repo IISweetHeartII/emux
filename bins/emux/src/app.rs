@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::io;
+#[allow(unused_imports)]
+use std::io::{self, Write as _};
 use std::time::Duration;
 
 use emux_config::Config;
@@ -10,6 +11,7 @@ use emux_pty::{CommandBuilder, PtySize, UnixPty as NativePty};
 use emux_pty::{CommandBuilder, PtySize, WinPty as NativePty};
 use emux_render::damage::DamageTracker;
 use emux_term::search::SearchState;
+use emux_term::selection::Selection;
 use emux_term::{DamageMode, Screen};
 use emux_vt::Parser;
 
@@ -36,6 +38,21 @@ pub(crate) enum Action {
 pub(crate) enum InputMode {
     Normal,
     Search,
+    /// Vi-style copy mode with cursor navigation and text selection.
+    Copy,
+}
+
+/// State for copy mode (vi-style navigation + selection).
+#[derive(Debug, Clone)]
+pub(crate) struct CopyModeState {
+    /// Cursor row in the viewport.
+    pub row: usize,
+    /// Cursor column.
+    pub col: usize,
+    /// Scrollback length when copy mode was entered (for absolute row computation).
+    pub scrollback_len: usize,
+    /// Active selection (None until 'v' is pressed).
+    pub selection: Option<Selection>,
 }
 
 // ---------------------------------------------------------------------------
@@ -61,7 +78,7 @@ pub(crate) struct App {
     pub(crate) bindings: ParsedBindings,
     /// Whether the app is running as a daemon client (true) or standalone (false).
     pub(crate) daemon_mode: bool,
-    /// Current input mode (normal vs search).
+    /// Current input mode (normal vs search vs copy).
     pub(crate) input_mode: InputMode,
     /// The current search query string being typed by the user.
     pub(crate) search_query: String,
@@ -69,6 +86,25 @@ pub(crate) struct App {
     pub(crate) search_state: SearchState,
     /// Whether `n`/`N` navigation is active (set after first character typed).
     pub(crate) search_direction_active: bool,
+    /// Copy mode state (cursor position, selection).
+    pub(crate) copy_mode: Option<CopyModeState>,
+    /// Text yanked in copy mode, to be sent as OSC 52 to the host terminal.
+    pub(crate) yanked_text: Option<String>,
+    /// Active border drag state for mouse resize.
+    pub(crate) border_drag: Option<BorderDrag>,
+}
+
+/// State tracking a mouse drag on a pane border for resizing.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct BorderDrag {
+    /// The pane whose right or bottom edge is being dragged.
+    pub pane_id: PaneId,
+    /// Whether this is a vertical border (drag left/right) or horizontal (drag up/down).
+    pub vertical: bool,
+    /// Last mouse column during drag.
+    pub last_col: u16,
+    /// Last mouse row during drag.
+    pub last_row: u16,
 }
 
 // ---------------------------------------------------------------------------

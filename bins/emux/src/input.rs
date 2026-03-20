@@ -36,3 +36,70 @@ pub(crate) fn translate_key(event: KeyEvent, screen: &Screen) -> Vec<u8> {
 
     encode_key(key, mods, app_cursor, app_keypad, newline_mode, false)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn default_screen() -> Screen {
+        Screen::new(80, 24)
+    }
+
+    #[test]
+    fn translate_printable_char() {
+        let event = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::empty());
+        let bytes = translate_key(event, &default_screen());
+        assert_eq!(bytes, b"a");
+    }
+
+    #[test]
+    fn translate_enter() {
+        let event = KeyEvent::new(KeyCode::Enter, KeyModifiers::empty());
+        let bytes = translate_key(event, &default_screen());
+        assert_eq!(bytes, b"\r");
+    }
+
+    #[test]
+    fn translate_ctrl_c() {
+        let event = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
+        let bytes = translate_key(event, &default_screen());
+        assert_eq!(bytes, &[0x03]); // ETX
+    }
+
+    #[test]
+    fn translate_escape() {
+        let event = KeyEvent::new(KeyCode::Esc, KeyModifiers::empty());
+        let bytes = translate_key(event, &default_screen());
+        assert_eq!(bytes, &[0x1b]);
+    }
+
+    #[test]
+    fn translate_arrow_up() {
+        let event = KeyEvent::new(KeyCode::Up, KeyModifiers::empty());
+        let bytes = translate_key(event, &default_screen());
+        assert_eq!(bytes, b"\x1b[A");
+    }
+
+    #[test]
+    fn translate_unknown_key_returns_empty() {
+        let event = KeyEvent::new(KeyCode::CapsLock, KeyModifiers::empty());
+        let bytes = translate_key(event, &default_screen());
+        assert!(bytes.is_empty());
+    }
+
+    #[test]
+    fn translate_tab() {
+        let event = KeyEvent::new(KeyCode::Tab, KeyModifiers::empty());
+        let bytes = translate_key(event, &default_screen());
+        assert_eq!(bytes, b"\t");
+    }
+
+    #[test]
+    fn translate_f1() {
+        let event = KeyEvent::new(KeyCode::F(1), KeyModifiers::empty());
+        let bytes = translate_key(event, &default_screen());
+        assert!(!bytes.is_empty());
+        // F1 = ESC O P or ESC [ 1 1 ~
+        assert!(bytes.starts_with(b"\x1b"));
+    }
+}

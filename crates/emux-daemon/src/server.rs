@@ -1,12 +1,17 @@
 //! Daemon server — listens for client connections and manages sessions.
 
+use std::collections::HashMap;
+#[allow(unused_imports)]
+use std::io::{self, Read as _, Write as _};
 #[cfg(unix)]
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use emux_ipc::{ClientMessage, ServerMessage, codec};
-use emux_mux::Session;
+use emux_ipc::{ClientMessage, ServerMessage, SplitDirection, codec};
+use emux_mux::{PaneId, Session};
+use emux_term::Screen;
+use emux_vt::Parser;
 
 use crate::persistence;
 use crate::{ClientId, DaemonError};
@@ -22,6 +27,19 @@ struct ClientConnection {
 
 /// Default auto-save interval in seconds.
 const AUTO_SAVE_INTERVAL_SECS: u64 = 30;
+
+/// Terminal state for a single pane managed by the daemon.
+pub struct PaneTerminal {
+    /// PTY master end (for reading output and writing input).
+    #[cfg(unix)]
+    pub pty: emux_pty::UnixPty,
+    #[cfg(windows)]
+    pub pty: emux_pty::WinPty,
+    /// VT parser state machine.
+    pub parser: Parser,
+    /// Terminal screen (grid + cursor + scrollback).
+    pub screen: Screen,
+}
 
 /// The daemon server: owns a session, listens on a socket, and serves
 /// attached clients.
@@ -40,6 +58,9 @@ pub struct DaemonServer {
     last_save: Instant,
     /// Whether the session has been modified since the last save.
     dirty: bool,
+    /// Per-pane terminal state (PTY + Screen). Managed by the daemon so
+    /// AI agents can `SendKeys` and `CapturePane` on real terminals.
+    pub pane_terminals: HashMap<PaneId, PaneTerminal>,
 }
 
 impl DaemonServer {
@@ -127,6 +148,7 @@ impl DaemonServer {
             snapshot_path,
             last_save: Instant::now(),
             dirty: false,
+            pane_terminals: HashMap::new(),
         })
     }
 
@@ -252,16 +274,172 @@ impl DaemonServer {
                 }
             }
 
-            // Agent / AI team protocol -- stubs until handler implementation.
-            ClientMessage::SplitPane { .. }
-            | ClientMessage::CapturePane { .. }
-            | ClientMessage::SendKeys { .. }
-            | ClientMessage::ListPanes
-            | ClientMessage::GetPaneInfo { .. }
-            | ClientMessage::ResizePane { .. }
-            | ClientMessage::SetPaneTitle { .. } => ServerMessage::Error {
-                message: "not yet implemented".into(),
-            },
+            // -- Agent / AI team protocol --
+            ClientMessage::SplitPane { direction, size } => {
+                let dir = match direction {
+                    SplitDirection::Horizontal => emux_mux::SplitDirection::Horizontal,
+                    SplitDirection::Vertical => emux_mux::SplitDirection::Vertical,
+                };
+                let _ = size;
+                match self.session.active_tab_mut().split_pane(dir) {
+                    Some(pane_id) => {
+                        // Spawn a real PTY + Screen for this pane.
+                        let positions = self.session.active_tab().compute_positions();
+                        let (cols, rows) = positions
+                            .iter()
+                            .find(|(id, _)| *id == pane_id)
+                            .map(|(_, p)| (p.cols, p.rows))
+                            .unwrap_or((80, 24));
+                        if let Ok(pt) = Self::spawn_pane_terminal(cols, rows) {
+                            self.pane_terminals.insert(pane_id, pt);
+                        }
+                        self.dirty = true;
+                        ServerMessage::SpawnResult { pane_id }
+                    }
+                    None => ServerMessage::Error {
+                        message: "cannot split pane".into(),
+                    },
+                }
+            }
+            ClientMessage::CapturePane { pane_id } => {
+                let tab = self.session.active_tab();
+                if tab.pane(pane_id).is_none() {
+                    return ServerMessage::Error {
+                        message: format!("pane {pane_id} not found"),
+                    };
+                }
+                // If we have a real terminal, drain PTY output first, then read Screen.
+                if let Some(pt) = self.pane_terminals.get_mut(&pane_id) {
+                    // Drain any pending PTY output into the screen.
+                    Self::drain_pty_output(pt);
+                    // Extract visible text from the screen.
+                    let content = (0..pt.screen.rows())
+                        .map(|r| pt.screen.row_text(r))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    ServerMessage::PaneCaptured { pane_id, content }
+                } else {
+                    // No PTY attached — return empty content sized to the pane.
+                    let positions = tab.compute_positions();
+                    let (cols, rows) = positions
+                        .iter()
+                        .find(|(id, _)| *id == pane_id)
+                        .map(|(_, p)| (p.cols, p.rows))
+                        .unwrap_or((0, 0));
+                    let content = (0..rows)
+                        .map(|_| " ".repeat(cols))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    ServerMessage::PaneCaptured { pane_id, content }
+                }
+            }
+            ClientMessage::SendKeys { pane_id, keys } => {
+                let tab = self.session.active_tab();
+                if tab.pane(pane_id).is_none() {
+                    return ServerMessage::Error {
+                        message: format!("pane {pane_id} not found"),
+                    };
+                }
+                // Write keys to the real PTY if available.
+                if let Some(pt) = self.pane_terminals.get_mut(&pane_id) {
+                    if let Err(e) = pt.pty.write(keys.as_bytes()) {
+                        return ServerMessage::Error {
+                            message: format!("PTY write error: {e}"),
+                        };
+                    }
+                }
+                ServerMessage::Ack
+            }
+            ClientMessage::ListPanes => {
+                let tab = self.session.active_tab();
+                let positions = tab.compute_positions();
+                let active = tab.active_pane_id();
+                let panes: Vec<emux_ipc::PaneEntry> = positions
+                    .iter()
+                    .map(|(id, pos)| {
+                        let pane = tab.pane(*id);
+                        emux_ipc::PaneEntry {
+                            id: *id,
+                            title: pane.map(|p| p.title().to_owned()).unwrap_or_default(),
+                            cols: pos.cols as u16,
+                            rows: pos.rows as u16,
+                            active: active == Some(*id),
+                            has_notification: pane.map(|p| p.has_notification()).unwrap_or(false),
+                        }
+                    })
+                    .collect();
+                ServerMessage::PaneList { panes }
+            }
+            ClientMessage::GetPaneInfo { pane_id } => {
+                let tab = self.session.active_tab();
+                if let Some(pane) = tab.pane(pane_id) {
+                    let positions = tab.compute_positions();
+                    let pos = positions.iter().find(|(id, _)| *id == pane_id);
+                    let (cols, rows) = pos
+                        .map(|(_, p)| (p.cols as u16, p.rows as u16))
+                        .unwrap_or((0, 0));
+                    let active = tab.active_pane_id() == Some(pane_id);
+                    ServerMessage::PaneInfo {
+                        pane: emux_ipc::PaneEntry {
+                            id: pane_id,
+                            title: pane.title().to_owned(),
+                            cols,
+                            rows,
+                            active,
+                            has_notification: pane.has_notification(),
+                        },
+                    }
+                } else {
+                    ServerMessage::Error {
+                        message: format!("pane {pane_id} not found"),
+                    }
+                }
+            }
+            ClientMessage::ResizePane {
+                pane_id,
+                cols,
+                rows,
+            } => {
+                let tab = self.session.active_tab_mut();
+                if tab.pane(pane_id).is_none() {
+                    return ServerMessage::Error {
+                        message: format!("pane {pane_id} not found"),
+                    };
+                }
+                // Compute current pane size and resize by delta.
+                let positions = tab.compute_positions();
+                if let Some((_, pos)) = positions.iter().find(|(id, _)| *id == pane_id) {
+                    let dcols = cols as i32 - pos.cols as i32;
+                    let drows = rows as i32 - pos.rows as i32;
+                    if dcols != 0 {
+                        tab.resize_pane(pane_id, emux_mux::ResizeDirection::Right, dcols);
+                    }
+                    if drows != 0 {
+                        tab.resize_pane(pane_id, emux_mux::ResizeDirection::Down, drows);
+                    }
+                    self.dirty = true;
+                    ServerMessage::Ack
+                } else {
+                    ServerMessage::Error {
+                        message: format!("cannot resize pane {pane_id}"),
+                    }
+                }
+            }
+            ClientMessage::SetPaneTitle { pane_id, title } => {
+                if let Some(pane) = self.session.active_tab_mut().pane_mut(pane_id) {
+                    pane.set_title(title);
+                    self.dirty = true;
+                    ServerMessage::Ack
+                } else {
+                    ServerMessage::Error {
+                        message: format!("pane {pane_id} not found"),
+                    }
+                }
+            }
+            ClientMessage::Attach { cols, rows } => {
+                self.session.resize(cols as usize, rows as usize);
+                ServerMessage::Ack
+            }
         }
     }
 
@@ -376,6 +554,78 @@ impl DaemonServer {
     /// Return the IDs of all currently connected clients.
     pub fn client_ids(&self) -> Vec<ClientId> {
         self.clients.iter().map(|c| c.id).collect()
+    }
+
+    /// Spawn a PTY + Screen for a pane of the given dimensions.
+    fn spawn_pane_terminal(cols: usize, rows: usize) -> Result<PaneTerminal, DaemonError> {
+        let size = emux_pty::PtySize {
+            rows: rows as u16,
+            cols: cols as u16,
+            pixel_width: 0,
+            pixel_height: 0,
+        };
+        let cmd = emux_pty::CommandBuilder::default_shell();
+
+        #[cfg(unix)]
+        let pty =
+            emux_pty::UnixPty::spawn(&cmd, size).map_err(|e| io::Error::other(e.to_string()))?;
+        #[cfg(windows)]
+        let pty =
+            emux_pty::WinPty::spawn(&cmd, size).map_err(|e| io::Error::other(e.to_string()))?;
+
+        #[cfg(unix)]
+        {
+            // Set the PTY master to non-blocking so drain_pty_output doesn't hang.
+            unsafe {
+                let fd = pty.master_raw_fd();
+                let flags = libc::fcntl(fd, libc::F_GETFL);
+                libc::fcntl(fd, libc::F_SETFL, flags | libc::O_NONBLOCK);
+            }
+        }
+
+        Ok(PaneTerminal {
+            pty,
+            parser: Parser::new(),
+            screen: Screen::new(cols, rows),
+        })
+    }
+
+    /// Drain all available PTY output into the terminal's Screen.
+    fn drain_pty_output(pt: &mut PaneTerminal) {
+        let mut buf = [0u8; 65536];
+        loop {
+            match pt.pty.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    pt.parser.advance(&mut pt.screen, &buf[..n]);
+                }
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
+                #[cfg(unix)]
+                Err(ref e) if e.raw_os_error() == Some(libc::EIO) => break,
+                Err(_) => break,
+            }
+        }
+    }
+
+    /// Drain PTY output for all pane terminals. Call this periodically
+    /// from the daemon event loop to keep Screen state up to date.
+    pub fn poll_pty_output(&mut self) {
+        for pt in self.pane_terminals.values_mut() {
+            Self::drain_pty_output(pt);
+        }
+    }
+
+    /// Spawn a PTY for an existing pane (e.g. the initial pane).
+    pub fn spawn_terminal_for_pane(&mut self, pane_id: PaneId) -> Result<(), DaemonError> {
+        let positions = self.session.active_tab().compute_positions();
+        let (cols, rows) = positions
+            .iter()
+            .find(|(id, _)| *id == pane_id)
+            .map(|(_, p)| (p.cols, p.rows))
+            .unwrap_or((80, 24));
+        let pt = Self::spawn_pane_terminal(cols, rows)?;
+        self.pane_terminals.insert(pane_id, pt);
+        Ok(())
     }
 
     /// Shut down: save session state, drop all clients, and remove the socket file.

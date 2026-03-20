@@ -36,6 +36,10 @@ pub struct KeyBindings {
     pub toggle_float: String,
     /// Key binding to enter copy mode.
     pub copy_mode: String,
+    /// Key binding to scroll viewport up (view scrollback history).
+    pub scroll_up: String,
+    /// Key binding to scroll viewport down (back toward live output).
+    pub scroll_down: String,
 }
 
 impl Default for KeyBindings {
@@ -57,6 +61,8 @@ impl Default for KeyBindings {
             toggle_fullscreen: "Leader+F".into(),
             toggle_float: "Leader+G".into(),
             copy_mode: "Leader+[".into(),
+            scroll_up: "Leader+PageUp".into(),
+            scroll_down: "Leader+PageDown".into(),
         }
     }
 }

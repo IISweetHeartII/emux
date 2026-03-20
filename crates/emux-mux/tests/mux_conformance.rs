@@ -4,6 +4,7 @@
 //!   - zellij-server/src/tab/unit/tab_tests.rs (132 tests)
 //!   - zellij-server/src/tab/unit/tab_integration_tests.rs (198 tests)
 //!   - zellij-server/src/unit/screen_tests.rs (156 tests)
+#![allow(unused_variables)]
 
 use emux_mux::{
     FocusDirection, LayoutNode, PaneConstraints, PanePosition, ResizeDirection, Session,

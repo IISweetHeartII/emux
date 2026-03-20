@@ -30,37 +30,93 @@ cargo run --release
 
 ## Running Tests
 
-emux has 1,347 automated tests. Every PR must pass all of them.
+emux has **1,409 automated tests** (1,379 unit/integration + 30 E2E).
+Every PR must pass all of them.
+
+### Quick check (before every commit)
 
 ```sh
-# Run the full test suite
+cargo fmt --all -- --check
+cargo clippy --workspace -- -D warnings
+cargo test --workspace
+```
+
+### Full test (before PR or release)
+
+```sh
+# Run everything including E2E tests that need a real PTY
+./scripts/full-test.sh
+```
+
+Or step by step:
+
+```sh
+# 1. Format
+cargo fmt --all -- --check
+
+# 2. Lint (zero warnings required)
+cargo clippy --workspace -- -D warnings
+
+# 3. Unit + integration tests (1,379 tests)
 cargo test --workspace
 
-# Run tests for a specific crate
-cargo test -p emux-vt
-cargo test -p emux-term
-cargo test -p emux-mux
+# 4. E2E tests — spawns real emux binary in a PTY (30 tests)
+#    Must run single-threaded (PTY resource contention)
+cargo test --workspace -- --ignored --test-threads=1
 
-# Run with output visible
-cargo test --workspace -- --nocapture
+# 5. Release build
+cargo build --release
 
-# Run TDD targets (ignored tests waiting for implementation)
-cargo test --workspace -- --ignored
+# 6. Benchmark compilation
+cargo bench --workspace --no-run
 
-# Run benchmarks
-cargo bench -p emux-vt
+# 7. Install and verify
+cargo install --path bins/emux --force
+emux --version
 ```
 
 ### Test types
 
-| Type             | Location                          | How to run                                    |
-|------------------|-----------------------------------|-----------------------------------------------|
-| Unit tests       | `src/**/*.rs` (`#[cfg(test)]`)    | `cargo test -p <crate>`                       |
-| Integration      | `tests/*.rs`                      | `cargo test -p <crate> --test <name>`         |
-| Golden/snapshot  | `crates/emux-term/tests/golden/`  | `cargo test -p emux-term -- golden`           |
-| Stress tests     | `crates/emux-vt/tests/stress.rs`  | `cargo test -p emux-vt --test stress`         |
-| Fuzz targets     | `fuzz/`                           | `cargo +nightly fuzz run fuzz_parser`         |
-| Benchmarks       | `benches/`                        | `cargo bench -p emux-vt`                      |
+| Type | Location | How to run | Count |
+|------|----------|------------|-------|
+| Unit tests | `src/**/*.rs` (`#[cfg(test)]`) | `cargo test -p <crate>` | ~800 |
+| Integration | `tests/*.rs` | `cargo test -p <crate> --test <name>` | ~500 |
+| Golden/snapshot | `crates/emux-term/tests/golden/` | `cargo test -p emux-term -- golden` | 45 |
+| Stress tests | `crates/emux-vt/tests/stress.rs` | `cargo test -p emux-vt --test stress` | 21 |
+| E2E binary | `bins/emux/tests/e2e.rs` | `cargo test -p emux -- --ignored --test-threads=1` | 21 |
+| Agent IPC E2E | `bins/emux/tests/agent_ipc.rs` | same as above | 4 |
+| Session lifecycle | `bins/emux/tests/session.rs` | same as above | 1 |
+| Daemon agent E2E | `crates/emux-daemon/tests/agent_e2e.rs` | `cargo test -p emux-daemon --test agent_e2e` | 9 |
+| Fuzz targets | `fuzz/` | `cargo +nightly fuzz run fuzz_parser` | 3,993 corpus |
+| Benchmarks | `benches/` | `cargo bench -p emux-vt` | 1 |
+
+### Per-crate test commands
+
+```sh
+cargo test -p emux-vt           # VT parser (conformance + stress)
+cargo test -p emux-term         # Terminal state (golden, screen, input)
+cargo test -p emux-pty          # PTY spawn
+cargo test -p emux-mux          # Pane/tab layout
+cargo test -p emux-config       # Configuration loading
+cargo test -p emux-daemon       # Daemon server + agent IPC
+cargo test -p emux-ipc          # IPC protocol codec
+cargo test -p emux-render       # Rendering + status bar
+cargo test -p emux              # CLI + E2E binary tests
+```
+
+### Platform-specific testing
+
+| Check | macOS | Linux/WSL | Windows |
+|-------|-------|-----------|---------|
+| `cargo test --workspace` | Yes | Yes | Yes |
+| `-- --ignored --test-threads=1` | Yes | Yes | Skipped (`#[cfg(unix)]`) |
+| Fuzz (`cargo +nightly fuzz run`) | Yes | Yes | Not supported |
+| Agent IPC socket | Unix socket | Unix socket | TCP loopback |
+
+**Windows users:** The E2E tests are Unix-only (`#[cfg(unix)]`). On Windows, run
+the standard test suite and manually verify `emux.exe --version` and `emux.exe --help`.
+
+**WSL users:** Full test suite works identically to Linux/macOS.
 
 ---
 

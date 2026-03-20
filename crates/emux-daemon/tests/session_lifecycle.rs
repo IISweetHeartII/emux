@@ -872,3 +872,350 @@ fn session_sharing_disconnect_one_client_keeps_others() {
 
     server.shutdown();
 }
+
+// ---------------------------------------------------------------------------
+// Agent / AI IPC commands
+// ---------------------------------------------------------------------------
+
+#[test]
+fn agent_list_panes_returns_initial_pane() {
+    let name = unique_name("agent-list-panes");
+    let mut server = DaemonServer::start(&name).unwrap();
+    let id = ClientId(0);
+    let resp = server.handle_message(id, ClientMessage::ListPanes);
+    match resp {
+        ServerMessage::PaneList { panes } => {
+            assert_eq!(panes.len(), 1, "should have one initial pane");
+            assert!(panes[0].active, "initial pane should be active");
+            assert!(panes[0].cols > 0);
+            assert!(panes[0].rows > 0);
+        }
+        other => panic!("expected PaneList, got {:?}", other),
+    }
+    server.shutdown();
+}
+
+#[test]
+fn agent_split_pane_creates_new_pane() {
+    let name = unique_name("agent-split");
+    let mut server = DaemonServer::start(&name).unwrap();
+    let id = ClientId(0);
+
+    let resp = server.handle_message(
+        id,
+        ClientMessage::SplitPane {
+            direction: emux_ipc::SplitDirection::Vertical,
+            size: None,
+        },
+    );
+    let new_id = match resp {
+        ServerMessage::SpawnResult { pane_id } => pane_id,
+        other => panic!("expected SpawnResult, got {:?}", other),
+    };
+
+    // ListPanes should now show 2 panes.
+    let resp = server.handle_message(id, ClientMessage::ListPanes);
+    match resp {
+        ServerMessage::PaneList { panes } => {
+            assert_eq!(panes.len(), 2);
+            assert!(panes.iter().any(|p| p.id == new_id));
+        }
+        other => panic!("expected PaneList, got {:?}", other),
+    }
+    server.shutdown();
+}
+
+#[test]
+fn agent_get_pane_info_returns_details() {
+    let name = unique_name("agent-getinfo");
+    let mut server = DaemonServer::start(&name).unwrap();
+    let id = ClientId(0);
+
+    let pane_id = match server.handle_message(id, ClientMessage::ListPanes) {
+        ServerMessage::PaneList { panes } => panes[0].id,
+        _ => panic!("expected PaneList"),
+    };
+
+    let resp = server.handle_message(id, ClientMessage::GetPaneInfo { pane_id });
+    match resp {
+        ServerMessage::PaneInfo { pane } => {
+            assert_eq!(pane.id, pane_id);
+            assert!(pane.active);
+        }
+        other => panic!("expected PaneInfo, got {:?}", other),
+    }
+
+    // Non-existent pane should return error.
+    let resp = server.handle_message(id, ClientMessage::GetPaneInfo { pane_id: 9999 });
+    assert!(matches!(resp, ServerMessage::Error { .. }));
+
+    server.shutdown();
+}
+
+#[test]
+fn agent_set_pane_title_updates_title() {
+    let name = unique_name("agent-title");
+    let mut server = DaemonServer::start(&name).unwrap();
+    let id = ClientId(0);
+
+    let pane_id = match server.handle_message(id, ClientMessage::ListPanes) {
+        ServerMessage::PaneList { panes } => panes[0].id,
+        _ => panic!("expected PaneList"),
+    };
+
+    let resp = server.handle_message(
+        id,
+        ClientMessage::SetPaneTitle {
+            pane_id,
+            title: "my-agent".into(),
+        },
+    );
+    assert_eq!(resp, ServerMessage::Ack);
+
+    // Verify title changed.
+    let resp = server.handle_message(id, ClientMessage::GetPaneInfo { pane_id });
+    match resp {
+        ServerMessage::PaneInfo { pane } => {
+            assert_eq!(pane.title, "my-agent");
+        }
+        other => panic!("expected PaneInfo, got {:?}", other),
+    }
+    server.shutdown();
+}
+
+#[test]
+fn agent_capture_pane_returns_content() {
+    let name = unique_name("agent-capture");
+    let mut server = DaemonServer::start(&name).unwrap();
+    let id = ClientId(0);
+
+    let pane_id = match server.handle_message(id, ClientMessage::ListPanes) {
+        ServerMessage::PaneList { panes } => panes[0].id,
+        _ => panic!("expected PaneList"),
+    };
+
+    let resp = server.handle_message(id, ClientMessage::CapturePane { pane_id });
+    match resp {
+        ServerMessage::PaneCaptured {
+            pane_id: pid,
+            content,
+        } => {
+            assert_eq!(pid, pane_id);
+            assert!(
+                !content.is_empty(),
+                "capture should return non-empty content"
+            );
+        }
+        other => panic!("expected PaneCaptured, got {:?}", other),
+    }
+
+    // Non-existent pane should error.
+    let resp = server.handle_message(id, ClientMessage::CapturePane { pane_id: 9999 });
+    assert!(matches!(resp, ServerMessage::Error { .. }));
+
+    server.shutdown();
+}
+
+#[test]
+fn agent_send_keys_to_valid_pane_acks() {
+    let name = unique_name("agent-sendkeys");
+    let mut server = DaemonServer::start(&name).unwrap();
+    let id = ClientId(0);
+
+    let pane_id = match server.handle_message(id, ClientMessage::ListPanes) {
+        ServerMessage::PaneList { panes } => panes[0].id,
+        _ => panic!("expected PaneList"),
+    };
+
+    let resp = server.handle_message(
+        id,
+        ClientMessage::SendKeys {
+            pane_id,
+            keys: "echo hello\n".into(),
+        },
+    );
+    assert_eq!(resp, ServerMessage::Ack);
+
+    // Non-existent pane should error.
+    let resp = server.handle_message(
+        id,
+        ClientMessage::SendKeys {
+            pane_id: 9999,
+            keys: "test".into(),
+        },
+    );
+    assert!(matches!(resp, ServerMessage::Error { .. }));
+
+    server.shutdown();
+}
+
+#[test]
+fn agent_resize_pane_adjusts_layout() {
+    let name = unique_name("agent-resize");
+    let mut server = DaemonServer::start(&name).unwrap();
+    let id = ClientId(0);
+
+    // Split first so we have a pane to resize.
+    server.handle_message(
+        id,
+        ClientMessage::SplitPane {
+            direction: emux_ipc::SplitDirection::Vertical,
+            size: None,
+        },
+    );
+
+    let pane_id = match server.handle_message(id, ClientMessage::ListPanes) {
+        ServerMessage::PaneList { panes } => panes[0].id,
+        _ => panic!("expected PaneList"),
+    };
+
+    let resp = server.handle_message(
+        id,
+        ClientMessage::ResizePane {
+            pane_id,
+            cols: 60,
+            rows: 20,
+        },
+    );
+    assert_eq!(resp, ServerMessage::Ack);
+
+    // Non-existent pane should error.
+    let resp = server.handle_message(
+        id,
+        ClientMessage::ResizePane {
+            pane_id: 9999,
+            cols: 10,
+            rows: 10,
+        },
+    );
+    assert!(matches!(resp, ServerMessage::Error { .. }));
+
+    server.shutdown();
+}
+
+#[test]
+fn agent_set_title_nonexistent_pane_errors() {
+    let name = unique_name("agent-title-err");
+    let mut server = DaemonServer::start(&name).unwrap();
+    let id = ClientId(0);
+    let resp = server.handle_message(
+        id,
+        ClientMessage::SetPaneTitle {
+            pane_id: 9999,
+            title: "nope".into(),
+        },
+    );
+    assert!(matches!(resp, ServerMessage::Error { .. }));
+    server.shutdown();
+}
+
+// ---------------------------------------------------------------------------
+// E2E: Agent sends command via PTY, reads output via CapturePane
+// ---------------------------------------------------------------------------
+
+#[cfg(unix)]
+#[test]
+fn agent_e2e_send_keys_and_capture_output() {
+    // Full AI agent flow:
+    // 1. Spawn a PTY for the initial pane
+    // 2. SendKeys "echo agent_test_marker\n"
+    // 3. CapturePane and verify the marker appears
+    let name = unique_name("agent-e2e");
+    let mut server = DaemonServer::start(&name).unwrap();
+    let id = ClientId(0);
+
+    let pane_id = match server.handle_message(id, ClientMessage::ListPanes) {
+        ServerMessage::PaneList { panes } => panes[0].id,
+        other => panic!("expected PaneList, got {:?}", other),
+    };
+
+    // Spawn a real PTY for this pane.
+    server.spawn_terminal_for_pane(pane_id).unwrap();
+
+    // Wait for shell to initialize.
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    server.poll_pty_output();
+
+    // Send a command.
+    let resp = server.handle_message(
+        id,
+        ClientMessage::SendKeys {
+            pane_id,
+            keys: "echo agent_test_marker_42\n".into(),
+        },
+    );
+    assert_eq!(resp, ServerMessage::Ack);
+
+    // Wait for the command to execute.
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
+    // Capture the pane content.
+    let resp = server.handle_message(id, ClientMessage::CapturePane { pane_id });
+    match resp {
+        ServerMessage::PaneCaptured { content, .. } => {
+            assert!(
+                content.contains("agent_test_marker_42"),
+                "captured content should contain the echoed marker.\nActual content:\n{}",
+                content
+            );
+        }
+        other => panic!("expected PaneCaptured, got {:?}", other),
+    }
+
+    server.shutdown();
+}
+
+#[cfg(unix)]
+#[test]
+fn agent_e2e_split_and_capture_new_pane() {
+    // SplitPane via IPC creates a new pane with its own PTY.
+    let name = unique_name("agent-e2e-split");
+    let mut server = DaemonServer::start(&name).unwrap();
+    let id = ClientId(0);
+
+    let new_pane_id = match server.handle_message(
+        id,
+        ClientMessage::SplitPane {
+            direction: emux_ipc::SplitDirection::Vertical,
+            size: None,
+        },
+    ) {
+        ServerMessage::SpawnResult { pane_id } => pane_id,
+        other => panic!("expected SpawnResult, got {:?}", other),
+    };
+
+    // Wait for the new shell to start.
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    server.poll_pty_output();
+
+    // Send a command to the new pane.
+    let resp = server.handle_message(
+        id,
+        ClientMessage::SendKeys {
+            pane_id: new_pane_id,
+            keys: "echo split_pane_works\n".into(),
+        },
+    );
+    assert_eq!(resp, ServerMessage::Ack);
+
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
+    let resp = server.handle_message(
+        id,
+        ClientMessage::CapturePane {
+            pane_id: new_pane_id,
+        },
+    );
+    match resp {
+        ServerMessage::PaneCaptured { content, .. } => {
+            assert!(
+                content.contains("split_pane_works"),
+                "new pane should contain echoed text.\nActual:\n{}",
+                content
+            );
+        }
+        other => panic!("expected PaneCaptured, got {:?}", other),
+    }
+
+    server.shutdown();
+}

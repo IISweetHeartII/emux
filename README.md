@@ -2,7 +2,7 @@
 
 # emux
 
-**A modern terminal multiplexer built in Rust -- zero config, session persistence, and 1,347 tests.**
+**A modern terminal multiplexer built in Rust -- zero config, session persistence, and 1,379 tests.**
 
 [![CI](https://github.com/IISweetHeartII/emux/actions/workflows/ci.yml/badge.svg)](https://github.com/IISweetHeartII/emux/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/IISweetHeartII/emux/graph/badge.svg)](https://codecov.io/gh/IISweetHeartII/emux)
@@ -25,7 +25,7 @@ Terminal multiplexers haven't changed much in decades. tmux requires cryptic con
 **emux** takes a different approach:
 
 - **Zero config.** Sensible defaults, One Dark theme, intuitive keybindings. Works perfectly out of the box.
-- **Thoroughly tested.** 1,347 tests, 45 golden snapshot tests, 3,993 fuzz corpus files. The VT parser has been fuzz-tested to handle any byte sequence without panicking.
+- **Thoroughly tested.** 1,379 tests, 45 golden snapshot tests, 3,993 fuzz corpus files. The VT parser has been fuzz-tested to handle any byte sequence without panicking.
 - **Cross-platform.** macOS, Linux, WSL, and Windows (ConPTY) from a single codebase.
 - **Session persistence.** Daemon mode keeps sessions alive after disconnect. Detach, go home, reattach.
 - **Scriptable.** IPC socket API with length-prefixed JSON -- perfect for automation and AI agent integration.
@@ -334,7 +334,7 @@ Each crate can be compiled and tested in isolation, making it straightforward to
 
 ## Testing
 
-emux ships with **1,347 tests**, **3,993 fuzz corpus files**, and **45 golden snapshot tests**.
+emux ships with **1,379 tests**, **3,993 fuzz corpus files**, and **45 golden snapshot tests**.
 
 ```sh
 # Run all tests
@@ -384,7 +384,7 @@ cargo +nightly fuzz run fuzz_terminal
 | IPC / scriptable     | Yes        | Yes        | Yes        | No         |
 | Cross-platform       | Yes        | Unix       | Unix       | Unix       |
 | Config format        | TOML       | Custom     | KDL        | Custom     |
-| Automated tests      | 1,347      | ~0         | ~400       | ~0         |
+| Automated tests      | 1,379      | ~0         | ~400       | ~0         |
 | AI agent protocol    | Yes        | No         | No         | No         |
 | OSC 52 clipboard     | Yes        | Partial    | No         | No         |
 | Fuzz tested          | Yes        | No         | No         | No         |
