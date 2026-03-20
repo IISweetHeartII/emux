@@ -147,18 +147,23 @@ pub fn detect_hints(rows: &[Row], cols: usize) -> Vec<HintMatch> {
         // non-zero-width cell), the char index *is* the column index.
         let byte_to_col = |byte_off: usize| -> usize { text[..byte_off].chars().count() };
 
+        // Detect each pattern once and reuse the results.
+        let urls = detect_urls(&text);
+        let emails = detect_emails(&text);
+        let file_paths = detect_file_paths(&text);
+        let git_shas = detect_git_shas(&text);
+
+        let url_ranges: Vec<(usize, usize)> = urls.iter().map(|(s, e, _)| (*s, *e)).collect();
+        let email_ranges: Vec<(usize, usize)> = emails.iter().map(|(s, e, _)| (*s, *e)).collect();
+        let fp_ranges: Vec<(usize, usize)> = file_paths.iter().map(|(s, e, _)| (*s, *e)).collect();
+
         // URL (highest priority — detect before file paths so we don't
         // duplicate the path portion of a URL).
-        let url_ranges: Vec<(usize, usize)> = detect_urls(&text)
-            .iter()
-            .map(|(s, e, _)| (*s, *e))
-            .collect();
-
-        for (start, end, t) in detect_urls(&text) {
-            let sc = byte_to_col(start);
-            let ec = byte_to_col(end).saturating_sub(1);
+        for (start, end, t) in &urls {
+            let sc = byte_to_col(*start);
+            let ec = byte_to_col(*end).saturating_sub(1);
             matches.push(HintMatch {
-                text: t,
+                text: t.clone(),
                 kind: HintKind::Url,
                 start_row: row_idx,
                 start_col: sc,
@@ -168,16 +173,11 @@ pub fn detect_hints(rows: &[Row], cols: usize) -> Vec<HintMatch> {
         }
 
         // Email (detect before file paths to avoid partial overlap).
-        let email_ranges: Vec<(usize, usize)> = detect_emails(&text)
-            .iter()
-            .map(|(s, e, _)| (*s, *e))
-            .collect();
-
-        for (start, end, t) in detect_emails(&text) {
-            let sc = byte_to_col(start);
-            let ec = byte_to_col(end).saturating_sub(1);
+        for (start, end, t) in &emails {
+            let sc = byte_to_col(*start);
+            let ec = byte_to_col(*end).saturating_sub(1);
             matches.push(HintMatch {
-                text: t,
+                text: t.clone(),
                 kind: HintKind::Email,
                 start_row: row_idx,
                 start_col: sc,
@@ -204,14 +204,15 @@ pub fn detect_hints(rows: &[Row], cols: usize) -> Vec<HintMatch> {
         }
 
         // File paths (skip if inside a URL or email).
-        for (start, end, t) in detect_file_paths(&text) {
-            if overlaps_any(start, end, &url_ranges) || overlaps_any(start, end, &email_ranges) {
+        for (start, end, t) in &file_paths {
+            if overlaps_any(*start, *end, &url_ranges) || overlaps_any(*start, *end, &email_ranges)
+            {
                 continue;
             }
-            let sc = byte_to_col(start);
-            let ec = byte_to_col(end).saturating_sub(1);
+            let sc = byte_to_col(*start);
+            let ec = byte_to_col(*end).saturating_sub(1);
             matches.push(HintMatch {
-                text: t,
+                text: t.clone(),
                 kind: HintKind::FilePath,
                 start_row: row_idx,
                 start_col: sc,
@@ -221,22 +222,17 @@ pub fn detect_hints(rows: &[Row], cols: usize) -> Vec<HintMatch> {
         }
 
         // Git SHAs (skip if inside a URL, email, or file path).
-        let fp_ranges: Vec<(usize, usize)> = detect_file_paths(&text)
-            .iter()
-            .map(|(s, e, _)| (*s, *e))
-            .collect();
-
-        for (start, end, t) in detect_git_shas(&text) {
-            if overlaps_any(start, end, &url_ranges)
-                || overlaps_any(start, end, &email_ranges)
-                || overlaps_any(start, end, &fp_ranges)
+        for (start, end, t) in &git_shas {
+            if overlaps_any(*start, *end, &url_ranges)
+                || overlaps_any(*start, *end, &email_ranges)
+                || overlaps_any(*start, *end, &fp_ranges)
             {
                 continue;
             }
-            let sc = byte_to_col(start);
-            let ec = byte_to_col(end).saturating_sub(1);
+            let sc = byte_to_col(*start);
+            let ec = byte_to_col(*end).saturating_sub(1);
             matches.push(HintMatch {
-                text: t,
+                text: t.clone(),
                 kind: HintKind::GitSha,
                 start_row: row_idx,
                 start_col: sc,
