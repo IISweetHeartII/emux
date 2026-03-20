@@ -11,8 +11,7 @@ use std::os::windows::io::FromRawHandle;
 #[cfg(windows)]
 use std::ptr;
 
-#[cfg(windows)]
-use windows_sys::Win32::Foundation::{BOOL, CloseHandle, HANDLE, INVALID_HANDLE_VALUE, S_OK, TRUE};
+use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE, S_OK, TRUE};
 #[cfg(windows)]
 use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
 #[cfg(windows)]
@@ -29,6 +28,8 @@ use windows_sys::Win32::System::Threading::{
     GetExitCodeProcess, InitializeProcThreadAttributeList, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
     PROCESS_INFORMATION, STARTUPINFOEXW, UpdateProcThreadAttribute,
 };
+#[cfg(windows)]
+use windows_sys::core::BOOL;
 
 #[cfg(windows)]
 use crate::cmdbuilder::CommandBuilder;

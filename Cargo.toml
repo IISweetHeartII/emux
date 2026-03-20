@@ -41,6 +41,7 @@ nix = { version = "0.31", features = ["term", "process", "fs"] }
 portable-pty = "0.9"
 windows-sys = { version = "0.61", features = [
     "Win32_System_Console",
+    "Win32_System_IO",
     "Win32_Foundation",
     "Win32_Security",
     "Win32_System_Threading",
