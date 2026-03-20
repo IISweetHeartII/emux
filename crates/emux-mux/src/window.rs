@@ -1,7 +1,9 @@
 //! Window abstraction — a named container of tabs.
 //!
-//! The hierarchy is: Session -> Windows -> Tabs -> Panes.
-//! A [`Window`] groups related tabs and tracks which one is active.
+//! The intended hierarchy is: Session -> Windows -> Tabs -> Panes.
+//! Currently [`Session`](crate::Session) owns tabs directly without an
+//! intermediate Window layer.  This type is defined for forward
+//! compatibility but is not yet integrated into the session graph.
 
 use crate::pane::PaneSize;
 use crate::tab::{Tab, TabId};

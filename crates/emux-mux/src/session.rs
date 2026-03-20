@@ -102,8 +102,6 @@ impl Session {
             self.active_tab = self.tabs.len() - 1;
         } else if self.active_tab > index {
             self.active_tab -= 1;
-        } else if self.active_tab == index && self.active_tab >= self.tabs.len() {
-            self.active_tab = self.tabs.len() - 1;
         }
         true
     }

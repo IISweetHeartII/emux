@@ -340,6 +340,38 @@ impl Screen {
         self.grid.rows()
     }
 
+    /// Get a row for display, accounting for viewport scroll offset.
+    ///
+    /// When `viewport_offset > 0`, the display is scrolled into history:
+    /// - Top rows come from the scrollback buffer
+    /// - Bottom rows come from the live grid (shifted)
+    ///
+    /// When `viewport_offset == 0`, this is equivalent to `self.grid.row(display_row)`.
+    pub fn viewport_row(&self, display_row: usize) -> &crate::grid::Row {
+        if self.viewport_offset == 0 {
+            return self.grid.row(display_row);
+        }
+        let sb_len = self.grid.scrollback_len();
+        // The "virtual" row index in the combined scrollback+grid space:
+        // scrollback rows are 0..sb_len, grid rows are sb_len..sb_len+rows.
+        // The bottom of the viewport (display_row = rows-1) maps to
+        // sb_len + rows - 1 - viewport_offset.
+        // So display_row 0 maps to sb_len - viewport_offset.
+        let virtual_row = sb_len + display_row;
+        let virtual_row = virtual_row.saturating_sub(self.viewport_offset);
+        if virtual_row < sb_len {
+            // This row is in scrollback.
+            self.grid
+                .scrollback_row(virtual_row)
+                .unwrap_or_else(|| self.grid.row(0))
+        } else {
+            // This row is in the live grid.
+            let grid_row = virtual_row - sb_len;
+            self.grid
+                .row(grid_row.min(self.grid.rows().saturating_sub(1)))
+        }
+    }
+
     /// Get the active charset.
     fn active_charset(&self) -> Charset {
         if self.active_charset == 1 {
@@ -1299,6 +1331,16 @@ impl Screen {
         self.viewport_offset = (self.viewport_offset + n).min(max);
     }
 
+    /// Scroll viewport down by `n` lines (back toward live output).
+    pub fn scroll_viewport_down(&mut self, n: usize) {
+        self.viewport_offset = self.viewport_offset.saturating_sub(n);
+    }
+
+    /// Reset viewport to the bottom (live output).
+    pub fn scroll_viewport_reset(&mut self) {
+        self.viewport_offset = 0;
+    }
+
     /// Current viewport scroll offset (0 = at bottom).
     pub fn viewport_offset(&self) -> usize {
         self.viewport_offset
@@ -1564,26 +1606,12 @@ impl Screen {
     /// Record damage for a scroll operation.
     fn record_scroll_damage(&mut self, top: usize, bottom: usize) {
         let cols = self.cols();
-        match self.damage_mode {
-            DamageMode::Scroll => {
-                for r in top..bottom {
-                    self.damage_list.push(DamageRegion {
-                        row: r,
-                        col_start: 0,
-                        col_end: cols,
-                    });
-                }
-            }
-            _ => {
-                // In non-scroll mode, scroll just damages the affected rows.
-                for r in top..bottom {
-                    self.damage_list.push(DamageRegion {
-                        row: r,
-                        col_start: 0,
-                        col_end: cols,
-                    });
-                }
-            }
+        for r in top..bottom {
+            self.damage_list.push(DamageRegion {
+                row: r,
+                col_start: 0,
+                col_end: cols,
+            });
         }
     }
 
