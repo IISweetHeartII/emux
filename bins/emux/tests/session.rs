@@ -14,9 +14,34 @@ fn emux_bin() -> String {
 // 1. `emux ls` with no daemon running
 // ---------------------------------------------------------------------------
 
-#[test]
-fn list_shows_no_active_sessions_when_none_running() {
-    // Kill any leftover daemon sessions from previous test runs.
+/// Run a command with a timeout. Returns the output or panics on timeout.
+fn run_with_timeout(cmd: &str, args: &[&str], timeout: Duration) -> std::process::Output {
+    let mut child = Command::new(cmd)
+        .args(args)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap_or_else(|e| panic!("failed to spawn {cmd}: {e}"));
+
+    let start = std::time::Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => return child.wait_with_output().unwrap(),
+            Ok(None) => {
+                if start.elapsed() >= timeout {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    panic!("{cmd} {args:?} timed out after {timeout:?}");
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            Err(e) => panic!("error waiting for {cmd}: {e}"),
+        }
+    }
+}
+
+/// Kill stale emux daemons and remove leftover socket files.
+fn cleanup_stale_sessions() {
     let sock_dir = std::env::temp_dir().join("emux-sockets");
     if let Ok(entries) = std::fs::read_dir(&sock_dir) {
         for entry in entries.flatten() {
@@ -26,24 +51,47 @@ fn list_shows_no_active_sessions_when_none_running() {
                     .strip_prefix("emux-")
                     .and_then(|s| s.strip_suffix(".sock"))
                 {
-                    let _ = Command::new(emux_bin()).args(["kill", session]).output();
+                    // Try graceful kill with a timeout — ignore failures.
+                    let mut child = Command::new(emux_bin())
+                        .args(["kill", session])
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null())
+                        .spawn()
+                        .ok();
+                    if let Some(ref mut c) = child {
+                        std::thread::sleep(Duration::from_secs(1));
+                        let _ = c.kill();
+                        let _ = c.wait();
+                    }
                 }
             }
         }
-        // Wait for daemons to die and clean up.
-        std::thread::sleep(Duration::from_millis(500));
-        // Remove any remaining stale sockets.
-        if let Ok(entries) = std::fs::read_dir(&sock_dir) {
-            for entry in entries.flatten() {
-                let _ = std::fs::remove_file(entry.path());
+    }
+    std::thread::sleep(Duration::from_millis(300));
+    // Clean up daemon sockets in temp_dir (emux-test-* format).
+    if let Ok(entries) = std::fs::read_dir(std::env::temp_dir()) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
+                if name.starts_with("emux-test-") {
+                    let _ = std::fs::remove_file(&path);
+                }
             }
         }
     }
+    // Force-remove any remaining socket files.
+    if let Ok(entries) = std::fs::read_dir(&sock_dir) {
+        for entry in entries.flatten() {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
+}
 
-    let output = Command::new(emux_bin())
-        .arg("ls")
-        .output()
-        .expect("failed to execute emux ls");
+#[test]
+fn list_shows_no_active_sessions_when_none_running() {
+    cleanup_stale_sessions();
+
+    let output = run_with_timeout(&emux_bin(), &["ls"], Duration::from_secs(5));
 
     assert!(output.status.success(), "exit code should be 0");
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -55,10 +103,9 @@ fn list_shows_no_active_sessions_when_none_running() {
 
 #[test]
 fn list_long_form_works() {
-    let output = Command::new(emux_bin())
-        .arg("list")
-        .output()
-        .expect("failed to execute emux list");
+    cleanup_stale_sessions();
+
+    let output = run_with_timeout(&emux_bin(), &["list"], Duration::from_secs(5));
 
     assert!(output.status.success(), "exit code should be 0");
     let stdout = String::from_utf8_lossy(&output.stdout);
