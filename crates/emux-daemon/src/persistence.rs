@@ -130,6 +130,21 @@ pub fn session_from_snapshot(snap: &SessionSnapshot) -> emux_mux::Session {
     for name in snap.tab_names.iter().skip(1) {
         session.new_tab(name.as_str());
     }
+    // Restore pane metadata (title, working directory) from tab snapshots.
+    for (tab_idx, tab_snap) in snap.tabs.iter().enumerate() {
+        if let Some(tab) = session.tab_mut(tab_idx) {
+            for pane_snap in &tab_snap.panes {
+                if let Some(pane) = tab.pane_mut(pane_snap.id) {
+                    if !pane_snap.title.is_empty() {
+                        pane.set_title(&pane_snap.title);
+                    }
+                    if let Some(ref wd) = pane_snap.working_directory {
+                        pane.set_working_directory(std::path::PathBuf::from(wd));
+                    }
+                }
+            }
+        }
+    }
     // Restore the active tab index.
     if snap.active_tab_index < session.tab_count() {
         session.switch_tab(snap.active_tab_index);
