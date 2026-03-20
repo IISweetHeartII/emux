@@ -13,7 +13,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
@@ -22,14 +22,14 @@ description = "A GPU-ready terminal multiplexer — zero config, built-in splits
 
 [workspace.dependencies]
 # Internal crates
-emux-vt = { version = "0.1.0", path = "crates/emux-vt", features = ["serde"] }
-emux-term = { version = "0.1.0", path = "crates/emux-term" }
-emux-pty = { version = "0.1.0", path = "crates/emux-pty" }
-emux-mux = { version = "0.1.0", path = "crates/emux-mux" }
-emux-config = { version = "0.1.0", path = "crates/emux-config" }
-emux-daemon = { version = "0.1.0", path = "crates/emux-daemon" }
-emux-ipc = { version = "0.1.0", path = "crates/emux-ipc" }
-emux-render = { version = "0.1.0", path = "crates/emux-render" }
+emux-vt = { version = "0.2.0", path = "crates/emux-vt", features = ["serde"] }
+emux-term = { version = "0.2.0", path = "crates/emux-term" }
+emux-pty = { version = "0.2.0", path = "crates/emux-pty" }
+emux-mux = { version = "0.2.0", path = "crates/emux-mux" }
+emux-config = { version = "0.2.0", path = "crates/emux-config" }
+emux-daemon = { version = "0.2.0", path = "crates/emux-daemon" }
+emux-ipc = { version = "0.2.0", path = "crates/emux-ipc" }
+emux-render = { version = "0.2.0", path = "crates/emux-render" }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }

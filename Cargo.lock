@@ -307,7 +307,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
 name = "emux"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "crossterm",
  "emux-config",
@@ -324,7 +324,7 @@ dependencies = [
 
 [[package]]
 name = "emux-config"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "tempfile",
@@ -333,7 +333,7 @@ dependencies = [
 
 [[package]]
 name = "emux-daemon"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "emux-config",
  "emux-ipc",
@@ -349,7 +349,7 @@ dependencies = [
 
 [[package]]
 name = "emux-ipc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "libc",
  "serde",
@@ -358,7 +358,7 @@ dependencies = [
 
 [[package]]
 name = "emux-mux"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "emux-pty",
  "emux-term",
@@ -370,7 +370,7 @@ dependencies = [
 
 [[package]]
 name = "emux-pty"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "nix 0.31.2",
  "portable-pty",
@@ -379,7 +379,7 @@ dependencies = [
 
 [[package]]
 name = "emux-render"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "crossterm",
  "emux-term",
@@ -388,7 +388,7 @@ dependencies = [
 
 [[package]]
 name = "emux-term"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "emux-vt",
  "insta",
@@ -399,7 +399,7 @@ dependencies = [
 
 [[package]]
 name = "emux-vt"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "insta",
