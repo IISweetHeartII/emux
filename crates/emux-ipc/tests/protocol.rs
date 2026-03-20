@@ -17,7 +17,7 @@ use std::io::Cursor;
 #[test]
 fn encode_decode_ping() {
     let msg = ClientMessage::Ping;
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     // skip 4-byte length prefix
     let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
@@ -26,7 +26,7 @@ fn encode_decode_ping() {
 #[test]
 fn encode_decode_pong() {
     let msg = ServerMessage::Pong;
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ServerMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -36,7 +36,7 @@ fn encode_decode_key_input() {
     let msg = ClientMessage::KeyInput {
         data: vec![0x1b, 0x5b, 0x41], // ESC [ A (arrow up)
     };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -48,7 +48,7 @@ fn encode_decode_render() {
         pane_id: 1,
         content,
     };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ServerMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -58,13 +58,13 @@ fn encode_decode_spawn_pane() {
     let msg = ClientMessage::SpawnPane {
         direction: Some("right".to_string()),
     };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 
     // Also test with None direction
     let msg2 = ClientMessage::SpawnPane { direction: None };
-    let bytes2 = codec::encode(&msg2);
+    let bytes2 = codec::encode(&msg2).unwrap();
     let decoded2: ClientMessage = codec::decode(&bytes2[4..]).unwrap();
     assert_eq!(msg2, decoded2);
 }
@@ -75,7 +75,7 @@ fn encode_decode_resize() {
         cols: 120,
         rows: 40,
     };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -83,7 +83,7 @@ fn encode_decode_resize() {
 #[test]
 fn encode_decode_close_pane() {
     let msg = ClientMessage::KillPane { pane_id: 42 };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -189,8 +189,8 @@ fn roundtrip_preserves_data_identity() {
 #[test]
 fn roundtrip_empty_payload() {
     // Ping and Pong have no inner data; verify the wire format is compact.
-    let ping_bytes = codec::encode(&ClientMessage::Ping);
-    let pong_bytes = codec::encode(&ServerMessage::Pong);
+    let ping_bytes = codec::encode(&ClientMessage::Ping).unwrap();
+    let pong_bytes = codec::encode(&ServerMessage::Pong).unwrap();
 
     // 4 bytes length prefix + JSON payload (e.g. `"Ping"`)
     // The payload should be small and deterministic.
@@ -198,10 +198,10 @@ fn roundtrip_empty_payload() {
     let pong_payload = &pong_bytes[4..];
 
     // Verify length prefix matches actual payload size
-    let ping_len = u32::from_le_bytes(ping_bytes[..4].try_into().unwrap()) as usize;
+    let ping_len = u32::from_be_bytes(ping_bytes[..4].try_into().unwrap()) as usize;
     assert_eq!(ping_len, ping_payload.len());
 
-    let pong_len = u32::from_le_bytes(pong_bytes[..4].try_into().unwrap()) as usize;
+    let pong_len = u32::from_be_bytes(pong_bytes[..4].try_into().unwrap()) as usize;
     assert_eq!(pong_len, pong_payload.len());
 
     // Roundtrip
@@ -256,7 +256,7 @@ fn partial_read_blocks_until_complete() {
     // Encode a message, then try to read from a truncated buffer.
     // The reader should return an IO error (UnexpectedEof) rather than garbage.
     let msg = ClientMessage::Ping;
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
 
     // Truncate: only provide the length prefix + half the payload
     let half = 4 + (bytes.len() - 4) / 2;
@@ -361,7 +361,7 @@ fn encode_decode_split_pane() {
         direction: SplitDirection::Horizontal,
         size: Some(30),
     };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 
@@ -370,7 +370,7 @@ fn encode_decode_split_pane() {
         direction: SplitDirection::Vertical,
         size: None,
     };
-    let bytes2 = codec::encode(&msg2);
+    let bytes2 = codec::encode(&msg2).unwrap();
     let decoded2: ClientMessage = codec::decode(&bytes2[4..]).unwrap();
     assert_eq!(msg2, decoded2);
 }
@@ -378,7 +378,7 @@ fn encode_decode_split_pane() {
 #[test]
 fn encode_decode_capture_pane() {
     let msg = ClientMessage::CapturePane { pane_id: 5 };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -389,7 +389,7 @@ fn encode_decode_send_keys() {
         pane_id: 2,
         keys: "ls -la\n".into(),
     };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -397,7 +397,7 @@ fn encode_decode_send_keys() {
 #[test]
 fn encode_decode_list_panes() {
     let msg = ClientMessage::ListPanes;
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -405,7 +405,7 @@ fn encode_decode_list_panes() {
 #[test]
 fn encode_decode_get_pane_info() {
     let msg = ClientMessage::GetPaneInfo { pane_id: 42 };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -417,7 +417,7 @@ fn encode_decode_resize_pane() {
         cols: 100,
         rows: 50,
     };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -428,7 +428,7 @@ fn encode_decode_set_pane_title() {
         pane_id: 3,
         title: "agent-worker-1".into(),
     };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -439,7 +439,7 @@ fn encode_decode_pane_captured() {
         pane_id: 5,
         content: "$ echo hello\nhello\n$ ".into(),
     };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ServerMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -466,7 +466,7 @@ fn encode_decode_pane_list() {
             },
         ],
     };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ServerMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -474,7 +474,7 @@ fn encode_decode_pane_list() {
 #[test]
 fn encode_decode_pane_list_empty() {
     let msg = ServerMessage::PaneList { panes: vec![] };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ServerMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -491,7 +491,7 @@ fn encode_decode_pane_info() {
             has_notification: false,
         },
     };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ServerMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -581,7 +581,7 @@ fn send_keys_with_special_characters() {
         pane_id: 0,
         keys: "\x1b[A\x1b[B\x03\r\n".into(), // arrow up, arrow down, ctrl-c, enter
     };
-    let bytes = codec::encode(&msg);
+    let bytes = codec::encode(&msg).unwrap();
     let decoded: ClientMessage = codec::decode(&bytes[4..]).unwrap();
     assert_eq!(msg, decoded);
 }
