@@ -12,15 +12,16 @@ use emux_daemon::persistence;
 use emux_daemon::server::DaemonServer;
 use emux_ipc::{ClientMessage, ServerMessage};
 
-/// Helper: generate a unique session name based on the test function name
-/// and a random suffix to avoid collisions between parallel tests.
+/// Helper: generate a short unique session name.
+///
+/// Uses a compact format to stay within the Unix socket path limit
+/// (104 bytes on macOS).  Format: `t-{base_prefix}-{pid}-{counter}`.
 fn unique_name(base: &str) -> String {
-    use std::time::SystemTime;
-    let t = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-    format!("{base}-{t}")
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static COUNTER: AtomicU32 = AtomicU32::new(0);
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let prefix: String = base.chars().take(8).collect();
+    format!("t{}-{}-{n}", std::process::id(), prefix)
 }
 
 /// Helper: temp directory for snapshot tests.
