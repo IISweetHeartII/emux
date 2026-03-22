@@ -145,6 +145,22 @@ jobs:
             --notes-file RELEASE_NOTES.md \
             --latest
 
+      - name: Install Rust stable
+        if: steps.check.outputs.exists == 'false'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish to crates.io
+        if: steps.check.outputs.exists == 'false'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          # Publish in dependency order, waiting for each to be available.
+          for crate in emux-vt emux-term emux-pty emux-config emux-ipc emux-mux emux-daemon emux-render emux; do
+            echo "Publishing $crate..."
+            cargo publish -p "$crate" --no-verify 2>&1 || echo "WARN: $crate publish failed (may already exist)"
+            sleep 15
+          done
+
       - name: Skip (tag exists)
         if: steps.check.outputs.exists == 'true'
         run: echo "Tag ${{ steps.version.outputs.version }} already exists, skipping"

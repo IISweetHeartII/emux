@@ -11,11 +11,10 @@ use std::os::windows::io::FromRawHandle;
 #[cfg(windows)]
 use std::ptr;
 
-use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE, S_OK, TRUE};
 #[cfg(windows)]
-use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
+use crate::cmdbuilder::CommandBuilder;
 #[cfg(windows)]
-use windows_sys::Win32::Storage::FileSystem::{ReadFile, WriteFile};
+use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE, S_OK};
 #[cfg(windows)]
 use windows_sys::Win32::System::Console::{
     COORD, ClosePseudoConsole, CreatePseudoConsole, HPCON, ResizePseudoConsole,
@@ -28,11 +27,6 @@ use windows_sys::Win32::System::Threading::{
     GetExitCodeProcess, InitializeProcThreadAttributeList, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
     PROCESS_INFORMATION, STARTUPINFOEXW, UpdateProcThreadAttribute,
 };
-#[cfg(windows)]
-use windows_sys::core::BOOL;
-
-#[cfg(windows)]
-use crate::cmdbuilder::CommandBuilder;
 
 /// PTY dimensions.
 #[cfg(windows)]

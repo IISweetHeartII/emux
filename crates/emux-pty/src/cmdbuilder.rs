@@ -1,6 +1,7 @@
 //! Command builder for spawning shell processes.
 
 use std::collections::HashMap;
+#[cfg(unix)]
 use std::ffi::CString;
 use std::path::{Path, PathBuf};
 
