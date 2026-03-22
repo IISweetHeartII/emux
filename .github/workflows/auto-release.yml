@@ -30,26 +30,14 @@ jobs:
 
       - name: Get next version
         id: version
-        env:
-          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "Last tag: $LAST_TAG"
 
-          FIRST_LINE=$(echo "$COMMIT_MSG" | head -1)
-          echo "Commit subject: $FIRST_LINE"
-
-          if [[ "$FIRST_LINE" =~ v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
-            VERSION="v${BASH_REMATCH[1]}"
-            echo "Version from commit: $VERSION"
-          else
-            IFS='.' read -ra PARTS <<< "${LAST_TAG//v/}"
-            MAJOR=${PARTS[0]}
-            MINOR=${PARTS[1]}
-            PATCH=$((PARTS[2] + 1))
-            VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-            echo "Auto-incremented version: $VERSION"
-          fi
+          # Read version from Cargo.toml (source of truth).
+          CARGO_VERSION=$(grep -m1 '^version' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+          VERSION="v${CARGO_VERSION}"
+          echo "Cargo.toml version: $VERSION"
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "last_tag=$LAST_TAG" >> "$GITHUB_OUTPUT"
