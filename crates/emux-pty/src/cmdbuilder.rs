@@ -7,8 +7,6 @@ use std::path::{Path, PathBuf};
 
 #[cfg(unix)]
 use crate::unix::PtyError;
-#[cfg(windows)]
-use crate::windows::PtyError;
 
 /// Builds the command and environment for a PTY child process.
 #[derive(Debug, Clone)]
