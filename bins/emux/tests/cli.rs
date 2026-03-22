@@ -248,6 +248,7 @@ fn help_mentions_kill_subcommand() {
 /// enable_raw_mode() because stdin is not a terminal. We verify it exits
 /// with an error (not a panic/signal) and does so promptly.
 #[test]
+#[cfg(unix)]
 fn binary_exits_gracefully_without_tty() {
     use std::process::Stdio;
 
@@ -298,6 +299,7 @@ fn binary_exits_gracefully_without_tty() {
 /// regression guard for WouldBlock handling — even though the binary
 /// won't fully process input without a TTY, it must not crash.
 #[test]
+#[cfg(unix)]
 fn large_stdin_does_not_crash() {
     use std::io::Write;
     use std::process::Stdio;
