@@ -74,6 +74,11 @@ impl DaemonServer {
     /// If a saved snapshot exists at the default location, the session is
     /// restored from it automatically.
     pub fn start(session_name: &str) -> Result<Self, DaemonError> {
+        // Use /tmp directly on Unix to avoid long TMPDIR paths that exceed
+        // the Unix socket path limit (104 bytes on macOS).
+        #[cfg(unix)]
+        let socket_path = std::path::PathBuf::from(format!("/tmp/emux-test-{session_name}"));
+        #[cfg(windows)]
         let socket_path = std::env::temp_dir().join(format!("emux-test-{session_name}"));
 
         #[cfg(unix)]
@@ -513,6 +518,9 @@ impl DaemonServer {
 
     /// Rename the session and move the socket file accordingly.
     pub fn rename_session(&mut self, new_name: &str) -> Result<(), DaemonError> {
+        #[cfg(unix)]
+        let new_socket_path = std::path::PathBuf::from(format!("/tmp/emux-test-{new_name}"));
+        #[cfg(windows)]
         let new_socket_path = std::env::temp_dir().join(format!("emux-test-{new_name}"));
 
         #[cfg(unix)]
