@@ -14,7 +14,7 @@
 [![Crates.io](https://img.shields.io/crates/v/emux.svg)](https://crates.io/crates/emux)
 [![MSRV](https://img.shields.io/badge/MSRV-1.85-orange.svg)](Cargo.toml)
 
-<!-- ![emux demo](doc/demo.gif) -->
+![emux demo](doc/demo.gif)
 
 [Install](#installation) · [Quick Start](#quick-start) · [Why emux?](#why-emux) · [Features](#features) · [Architecture](#architecture) · [Docs](#documentation) · [Contributing](CONTRIBUTING.md)
 
