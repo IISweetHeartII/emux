@@ -528,10 +528,12 @@ fn process_agent_ipc(
 
 /// PaneAccess backed by App's pane HashMap — holds only the panes,
 /// not the session, to allow split borrows.
+#[cfg(unix)]
 struct StandalonePaneAccess<'a> {
     panes: &'a mut HashMap<PaneId, PaneState>,
 }
 
+#[cfg(unix)]
 impl crate::ipc_handler::PaneAccess for StandalonePaneAccess<'_> {
     fn capture_pane(&mut self, pane_id: PaneId) -> Option<String> {
         let ps = self.panes.get(&pane_id)?;
