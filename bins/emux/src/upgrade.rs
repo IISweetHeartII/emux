@@ -1,9 +1,16 @@
 //! Self-upgrade support: check for new releases and replace the running binary.
+//!
+//! Security: the downloaded archive is verified against a `SHA256SUMS` file
+//! published alongside each GitHub release. Auto-update on startup only
+//! *notifies* the user; the binary is never replaced without an explicit
+//! `emux upgrade` invocation.
 
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+
+use sha2::{Digest, Sha256};
 
 const REPO: &str = "IISweetHeartII/emux";
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -29,29 +36,17 @@ fn fetch_latest_release() -> Result<ReleaseInfo, String> {
 
     let body = String::from_utf8_lossy(&output.stdout);
 
-    // Minimal JSON parsing — extract "tag_name" without pulling in serde_json.
-    let tag = extract_json_string(&body, "tag_name")
-        .ok_or("could not find tag_name in release response")?;
+    let json: serde_json::Value =
+        serde_json::from_str(&body).map_err(|e| format!("invalid JSON from GitHub: {e}"))?;
+
+    let tag = json["tag_name"]
+        .as_str()
+        .ok_or("could not find tag_name in release response")?
+        .to_string();
 
     let version = tag.trim_start_matches('v').to_string();
 
     Ok(ReleaseInfo { tag, version })
-}
-
-/// Extract a string value for a given key from a JSON object (simple parser).
-fn extract_json_string(json: &str, key: &str) -> Option<String> {
-    let pattern = format!("\"{key}\"");
-    let start = json.find(&pattern)?;
-    let after_key = &json[start + pattern.len()..];
-    // Skip whitespace and colon
-    let after_colon = after_key.find(':').map(|i| &after_key[i + 1..])?;
-    let trimmed = after_colon.trim_start();
-    if !trimmed.starts_with('"') {
-        return None;
-    }
-    let value_start = 1; // skip opening quote
-    let value_end = trimmed[value_start..].find('"')?;
-    Some(trimmed[value_start..value_start + value_end].to_string())
 }
 
 /// Determine the target triple for the current platform.
@@ -88,7 +83,65 @@ fn is_newer(current: &str, latest: &str) -> bool {
     parse(latest) > parse(current)
 }
 
+/// Fetch the `SHA256SUMS` file for a release and return the expected hash
+/// for the given archive filename.
+fn fetch_expected_checksum(release: &ReleaseInfo, archive_name: &str) -> Result<String, String> {
+    let url = format!(
+        "https://github.com/{REPO}/releases/download/{}/SHA256SUMS",
+        release.tag
+    );
+    let output = Command::new("curl")
+        .args(["-fsSL", &url])
+        .output()
+        .map_err(|e| format!("failed to fetch SHA256SUMS: {e}"))?;
+
+    if !output.status.success() {
+        return Err("SHA256SUMS not found for this release — cannot verify integrity".into());
+    }
+
+    let body = String::from_utf8_lossy(&output.stdout);
+    for line in body.lines() {
+        // Format: "<hex-hash>  <filename>" or "<hex-hash> <filename>"
+        let parts: Vec<&str> = line.splitn(2, |c: char| c.is_whitespace()).collect();
+        if parts.len() == 2 && parts[1].trim() == archive_name {
+            return Ok(parts[0].to_lowercase());
+        }
+    }
+
+    Err(format!(
+        "no checksum found for '{archive_name}' in SHA256SUMS"
+    ))
+}
+
+/// Compute the SHA-256 hash of a file by streaming, returning the lowercase hex string.
+fn sha256_file(path: &std::path::Path) -> Result<String, String> {
+    use std::io::Read;
+    let mut file =
+        fs::File::open(path).map_err(|e| format!("failed to open file for checksum: {e}"))?;
+    let mut hasher = Sha256::new();
+    let mut buf = [0u8; 8192];
+    loop {
+        let n = file
+            .read(&mut buf)
+            .map_err(|e| format!("failed to read file for checksum: {e}"))?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
 /// Download and replace the current binary with the latest release.
+///
+/// The archive is verified against the `SHA256SUMS` file published with the
+/// release before extraction and installation.
+///
+/// **Threat model note:** SHA256SUMS and the archive are both fetched from
+/// GitHub Releases. If an attacker compromises the release (e.g. via account
+/// takeover), they control both files. Checksums protect against corruption
+/// and MITM, but not a compromised release author. For that, cryptographic
+/// signatures (Minisign/GPG) would be needed — deferred for now.
 fn download_and_replace(release: &ReleaseInfo) -> Result<(), String> {
     let target = current_target()?;
     let exe_path = current_exe_path()?;
@@ -100,6 +153,11 @@ fn download_and_replace(release: &ReleaseInfo) -> Result<(), String> {
         "https://github.com/{REPO}/releases/download/{}/{archive_name}",
         release.tag
     );
+
+    // Fetch expected checksum BEFORE downloading the archive.
+    eprint!("Verifying release integrity... ");
+    let expected_hash = fetch_expected_checksum(release, &archive_name)?;
+    eprintln!("ok");
 
     eprintln!("Downloading {}...", archive_name);
 
@@ -118,8 +176,21 @@ fn download_and_replace(release: &ReleaseInfo) -> Result<(), String> {
         .map_err(|e| format!("failed to download: {e}"))?;
 
     if !status.success() {
+        let _ = fs::remove_dir_all(&tmp_dir);
         return Err(format!("download failed for {url}"));
     }
+
+    // Verify SHA-256 checksum.
+    eprint!("Verifying checksum... ");
+    let actual_hash = sha256_file(&archive_path)?;
+    if actual_hash != expected_hash {
+        let _ = fs::remove_dir_all(&tmp_dir);
+        return Err(format!(
+            "checksum mismatch!\n  expected: {expected_hash}\n  actual:   {actual_hash}\n\
+             The downloaded file may have been tampered with. Aborting upgrade."
+        ));
+    }
+    eprintln!("ok (SHA-256 verified)");
 
     // Extract.
     if is_windows {
@@ -210,11 +281,14 @@ pub(crate) fn cmd_upgrade() -> Result<(), crate::AppError> {
     Ok(())
 }
 
-/// Auto-update on startup. Checks once per day; if a newer version exists,
-/// downloads and replaces the binary automatically, then prompts restart.
+/// Check for updates on startup (once per day) and notify the user.
+///
+/// This function only prints a notice — it never downloads or replaces the
+/// binary. The user must run `emux upgrade` explicitly to apply updates.
 pub(crate) fn check_update_notice() {
-    // Only check once per day — store last check timestamp.
-    let marker_path = env::temp_dir().join("emux-update-check");
+    // Only check once per day — store last check timestamp in the user's
+    // data directory (not /tmp) to prevent other users from resetting it.
+    let marker_path = marker_file_path();
     if let Ok(meta) = fs::metadata(&marker_path) {
         if let Ok(modified) = meta.modified() {
             if modified.elapsed().unwrap_or_default().as_secs() < 86400 {
@@ -229,7 +303,10 @@ pub(crate) fn check_update_notice() {
             return;
         };
 
-        // Cache the check time regardless of result.
+        // Update the marker file regardless of result.
+        if let Some(parent) = marker_path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
         let _ = fs::write(&marker_path, &release.version);
 
         if !is_newer(CURRENT_VERSION, &release.version) {
@@ -237,24 +314,24 @@ pub(crate) fn check_update_notice() {
         }
 
         eprintln!(
-            "\x1b[33mUpdating emux v{CURRENT_VERSION} → v{}...\x1b[0m",
+            "\x1b[33memux v{} available\x1b[0m (current: v{CURRENT_VERSION}). \
+             Run \x1b[1memux upgrade\x1b[0m to update.",
             release.version
         );
-
-        match download_and_replace(&release) {
-            Ok(()) => {
-                eprintln!(
-                    "\x1b[32mUpdated to emux v{}.\x1b[0m Restart emux to use the new version.",
-                    release.version
-                );
-            }
-            Err(e) => {
-                eprintln!(
-                    "\x1b[31mAuto-update failed: {e}\x1b[0m Run \x1b[1memux upgrade\x1b[0m to retry."
-                );
-            }
-        }
     });
+}
+
+/// Path to the update-check marker file, stored in the user's data directory.
+fn marker_file_path() -> PathBuf {
+    if let Ok(home) = env::var("HOME") {
+        PathBuf::from(home)
+            .join(".local")
+            .join("share")
+            .join("emux")
+            .join(".update-check")
+    } else {
+        env::temp_dir().join("emux-update-check")
+    }
 }
 
 #[cfg(test)]
@@ -289,17 +366,86 @@ mod tests {
     #[test]
     fn extract_tag_name_from_json() {
         let json = r#"{"tag_name": "v0.2.0", "name": "Release v0.2.0"}"#;
-        assert_eq!(extract_json_string(json, "tag_name"), Some("v0.2.0".into()));
+        let parsed: serde_json::Value = serde_json::from_str(json).unwrap();
+        assert_eq!(parsed["tag_name"].as_str(), Some("v0.2.0"));
     }
 
     #[test]
     fn extract_missing_key_returns_none() {
         let json = r#"{"name": "test"}"#;
-        assert_eq!(extract_json_string(json, "tag_name"), None);
+        let parsed: serde_json::Value = serde_json::from_str(json).unwrap();
+        assert!(parsed["tag_name"].as_str().is_none());
     }
 
     #[test]
     fn current_target_returns_valid_triple() {
         assert!(current_target().is_ok());
+    }
+
+    #[test]
+    fn sha256_file_computes_correct_hash() {
+        let dir = std::env::temp_dir().join(format!("emux-sha256-test-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("test.bin");
+        std::fs::write(&path, b"hello world").unwrap();
+
+        let hash = sha256_file(&path).unwrap();
+        // SHA-256 of "hello world" is well-known.
+        assert_eq!(
+            hash,
+            "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+        );
+
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_dir(&dir);
+    }
+
+    #[test]
+    fn sha256_file_empty_file() {
+        let dir = std::env::temp_dir().join(format!("emux-sha256-empty-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("empty.bin");
+        std::fs::write(&path, b"").unwrap();
+
+        let hash = sha256_file(&path).unwrap();
+        // SHA-256 of empty input.
+        assert_eq!(
+            hash,
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_dir(&dir);
+    }
+
+    #[test]
+    fn sha256_file_nonexistent_returns_error() {
+        let result = sha256_file(std::path::Path::new("/tmp/emux-does-not-exist-xyz"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn marker_file_path_contains_emux() {
+        let path = marker_file_path();
+        let path_str = path.to_string_lossy();
+        assert!(
+            path_str.contains("emux"),
+            "marker path should contain 'emux': {path_str}"
+        );
+    }
+
+    #[test]
+    fn marker_file_path_not_in_tmp_root() {
+        // The marker should be in the user's data directory, not bare /tmp/
+        let path = marker_file_path();
+        let path_str = path.to_string_lossy();
+        // Should NOT be directly /tmp/emux-update-check (old location)
+        // unless HOME is not set.
+        if std::env::var("HOME").is_ok() {
+            assert!(
+                !path_str.starts_with("/tmp/emux-update-check"),
+                "marker should not be in /tmp when HOME is set: {path_str}"
+            );
+        }
     }
 }

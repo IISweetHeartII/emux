@@ -56,6 +56,9 @@ mio = { version = "1", features = ["os-poll", "os-ext"] }
 # Terminal UI
 crossterm = "0.29"
 
+# Crypto
+sha2 = "0.10"
+
 # Testing
 insta = { version = "1", features = ["json"] }
 
