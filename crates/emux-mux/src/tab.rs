@@ -303,7 +303,7 @@ impl Tab {
             }
             self.active_pane = Some(pane_id);
             true
-        } else if self.floating_panes.iter().any(|fp| fp.pane.id() == pane_id) {
+        } else if self.find_floating(pane_id).is_some() {
             self.active_pane = Some(pane_id);
             self.bring_floating_to_front(pane_id);
             true
@@ -339,7 +339,7 @@ impl Tab {
             let next_id = ids[next];
             self.active_pane = Some(next_id);
             // Bring floating pane to front when focused
-            if self.floating_panes.iter().any(|fp| fp.pane.id() == next_id) {
+            if self.find_floating(next_id).is_some() {
                 self.bring_floating_to_front(next_id);
             }
             return true;
@@ -365,7 +365,7 @@ impl Tab {
             let prev = if pos == 0 { ids.len() - 1 } else { pos - 1 };
             let prev_id = ids[prev];
             self.active_pane = Some(prev_id);
-            if self.floating_panes.iter().any(|fp| fp.pane.id() == prev_id) {
+            if self.find_floating(prev_id).is_some() {
                 self.bring_floating_to_front(prev_id);
             }
             return true;
@@ -374,36 +374,25 @@ impl Tab {
         true
     }
 
-    /// Move focus in a direction based on pane positions.
-    /// Returns true if focus moved, false if at edge (caller may switch tabs).
-    pub fn focus_direction(&mut self, direction: FocusDirection) -> bool {
-        let active = match self.active_pane {
-            Some(id) => id,
-            None => return false,
-        };
-
+    /// Find the nearest neighbor pane in the given direction from the active pane.
+    fn find_neighbor_in_direction(&self, direction: FocusDirection) -> Option<PaneId> {
+        let active = self.active_pane?;
         let positions = self
             .layout
             .compute_positions(self.size.cols, self.size.rows);
-        let active_pos = match positions.iter().find(|(id, _)| *id == active) {
-            Some((_, pos)) => *pos,
-            None => return false,
-        };
+        let active_pos = positions
+            .iter()
+            .find(|(id, _)| *id == active)
+            .map(|(_, pos)| *pos)?;
 
-        // Find the best candidate in the given direction
-        let mut best: Option<(PaneId, usize)> = None; // (id, distance)
-
-        // Center of the active pane
         let active_center_col = active_pos.col * 2 + active_pos.cols;
         let active_center_row = active_pos.row * 2 + active_pos.rows;
+        let mut best: Option<(PaneId, usize)> = None;
 
         for &(id, pos) in &positions {
             if id == active {
                 continue;
             }
-            let center_col = pos.col * 2 + pos.cols;
-            let center_row = pos.row * 2 + pos.rows;
-
             let is_candidate = match direction {
                 FocusDirection::Up => {
                     pos.row + pos.rows <= active_pos.row
@@ -444,6 +433,8 @@ impl Tab {
             };
 
             if is_candidate {
+                let center_col = pos.col * 2 + pos.cols;
+                let center_row = pos.row * 2 + pos.rows;
                 let dist =
                     active_center_col.abs_diff(center_col) + active_center_row.abs_diff(center_row);
                 if best.is_none() || dist < best.unwrap().1 {
@@ -452,7 +443,13 @@ impl Tab {
             }
         }
 
-        if let Some((target_id, _)) = best {
+        best.map(|(id, _)| id)
+    }
+
+    /// Move focus in a direction based on pane positions.
+    /// Returns true if focus moved, false if at edge (caller may switch tabs).
+    pub fn focus_direction(&mut self, direction: FocusDirection) -> bool {
+        if let Some(target_id) = self.find_neighbor_in_direction(direction) {
             if self.fullscreen_pane.is_some() {
                 self.fullscreen_pane = None;
             }
@@ -633,17 +630,25 @@ impl Tab {
         &self.swap_layouts
     }
 
+    /// Get indices of swap layouts applicable to the given pane count.
+    fn applicable_swap_layout_indices(&self, pane_count: usize) -> Vec<usize> {
+        self.swap_layouts
+            .iter()
+            .enumerate()
+            .filter(|(_, sl)| {
+                let min_ok = sl.min_panes.is_none_or(|min| pane_count >= min);
+                let max_ok = sl.max_panes.is_none_or(|max| pane_count <= max);
+                min_ok && max_ok
+            })
+            .map(|(i, _)| i)
+            .collect()
+    }
+
     /// Called after pane count changes to automatically apply a matching layout.
     pub fn auto_swap_layout(&mut self) {
-        let count = self.panes.len();
-        // Find the first layout whose range includes the current pane count
-        let matching_index = self.swap_layouts.iter().position(|sl| {
-            let min_ok = sl.min_panes.is_none_or(|min| count >= min);
-            let max_ok = sl.max_panes.is_none_or(|max| count <= max);
-            min_ok && max_ok
-        });
+        let applicable = self.applicable_swap_layout_indices(self.panes.len());
 
-        if let Some(idx) = matching_index {
+        if let Some(&idx) = applicable.first() {
             // Only apply if it's different from the current swap layout
             if self.current_swap_index != Some(idx) {
                 self.apply_swap_layout_at(idx);
@@ -658,18 +663,7 @@ impl Tab {
         if self.swap_layouts.is_empty() {
             return;
         }
-        let count = self.panes.len();
-        let applicable: Vec<usize> = self
-            .swap_layouts
-            .iter()
-            .enumerate()
-            .filter(|(_, sl)| {
-                let min_ok = sl.min_panes.is_none_or(|min| count >= min);
-                let max_ok = sl.max_panes.is_none_or(|max| count <= max);
-                min_ok && max_ok
-            })
-            .map(|(i, _)| i)
-            .collect();
+        let applicable = self.applicable_swap_layout_indices(self.panes.len());
         if applicable.is_empty() {
             return;
         }
@@ -688,18 +682,7 @@ impl Tab {
         if self.swap_layouts.is_empty() {
             return;
         }
-        let count = self.panes.len();
-        let applicable: Vec<usize> = self
-            .swap_layouts
-            .iter()
-            .enumerate()
-            .filter(|(_, sl)| {
-                let min_ok = sl.min_panes.is_none_or(|min| count >= min);
-                let max_ok = sl.max_panes.is_none_or(|max| count <= max);
-                min_ok && max_ok
-            })
-            .map(|(i, _)| i)
-            .collect();
+        let applicable = self.applicable_swap_layout_indices(self.panes.len());
         if applicable.is_empty() {
             return;
         }
@@ -786,7 +769,7 @@ impl Tab {
         // When hiding floating panes, move focus to tiled if currently on a floating pane
         if !self.show_floating {
             if let Some(active) = self.active_pane
-                && self.floating_panes.iter().any(|fp| fp.pane.id() == active)
+                && self.find_floating(active).is_some()
             {
                 self.active_pane = self.layout.pane_ids().first().copied();
             }
@@ -810,7 +793,7 @@ impl Tab {
 
     /// Close and remove a floating pane by ID.
     pub fn close_floating_pane(&mut self, id: PaneId) -> bool {
-        let idx = self.floating_panes.iter().position(|fp| fp.pane.id() == id);
+        let idx = self.find_floating_idx(id);
         if let Some(idx) = idx {
             self.floating_panes.remove(idx);
             if self.active_pane == Some(id) {
@@ -830,7 +813,7 @@ impl Tab {
     /// Embed a floating pane into the tiled layout.
     /// The pane is removed from floating and added to the tiled layout tree.
     pub fn embed_floating_pane(&mut self, id: PaneId) -> bool {
-        let idx = self.floating_panes.iter().position(|fp| fp.pane.id() == id);
+        let idx = self.find_floating_idx(id);
         if let Some(idx) = idx {
             let fp = self.floating_panes.remove(idx);
             self.panes.insert(id, fp.pane);
@@ -877,14 +860,29 @@ impl Tab {
         true
     }
 
+    /// Find the index of a floating pane by ID.
+    fn find_floating_idx(&self, id: PaneId) -> Option<usize> {
+        self.floating_panes.iter().position(|fp| fp.pane.id() == id)
+    }
+
+    /// Find a floating pane by ID (immutable).
+    fn find_floating(&self, id: PaneId) -> Option<&FloatingPane> {
+        self.floating_panes.iter().find(|fp| fp.pane.id() == id)
+    }
+
+    /// Find a floating pane by ID (mutable).
+    fn find_floating_mut(&mut self, id: PaneId) -> Option<&mut FloatingPane> {
+        self.floating_panes.iter_mut().find(|fp| fp.pane.id() == id)
+    }
+
     /// Resize a floating pane. Dimensions are clamped to minimums and viewport.
     pub fn resize_floating_pane(&mut self, id: PaneId, width: usize, height: usize) -> bool {
-        if let Some(fp) = self.floating_panes.iter_mut().find(|fp| fp.pane.id() == id) {
-            let w = width.max(MIN_FLOATING_COLS).min(self.size.cols);
-            let h = height.max(MIN_FLOATING_ROWS).min(self.size.rows);
-            // Re-clamp position so pane stays in viewport
-            fp.x = fp.x.min(self.size.cols.saturating_sub(w));
-            fp.y = fp.y.min(self.size.rows.saturating_sub(h));
+        let size = self.size;
+        if let Some(fp) = self.find_floating_mut(id) {
+            let w = width.max(MIN_FLOATING_COLS).min(size.cols);
+            let h = height.max(MIN_FLOATING_ROWS).min(size.rows);
+            fp.x = fp.x.min(size.cols.saturating_sub(w));
+            fp.y = fp.y.min(size.rows.saturating_sub(h));
             fp.width = w;
             fp.height = h;
             fp.pane.resize(w, h);
@@ -896,9 +894,10 @@ impl Tab {
 
     /// Move a floating pane to a new position, clamped to the viewport.
     pub fn move_floating_pane(&mut self, id: PaneId, x: usize, y: usize) -> bool {
-        if let Some(fp) = self.floating_panes.iter_mut().find(|fp| fp.pane.id() == id) {
-            fp.x = x.min(self.size.cols.saturating_sub(fp.width));
-            fp.y = y.min(self.size.rows.saturating_sub(fp.height));
+        let size = self.size;
+        if let Some(fp) = self.find_floating_mut(id) {
+            fp.x = x.min(size.cols.saturating_sub(fp.width));
+            fp.y = y.min(size.rows.saturating_sub(fp.height));
             true
         } else {
             false
@@ -907,12 +906,12 @@ impl Tab {
 
     /// Get a reference to a floating pane by ID.
     pub fn floating_pane(&self, id: PaneId) -> Option<&FloatingPane> {
-        self.floating_panes.iter().find(|fp| fp.pane.id() == id)
+        self.find_floating(id)
     }
 
     /// Get a mutable reference to a floating pane by ID.
     pub fn floating_pane_mut(&mut self, id: PaneId) -> Option<&mut FloatingPane> {
-        self.floating_panes.iter_mut().find(|fp| fp.pane.id() == id)
+        self.find_floating_mut(id)
     }
 
     /// Get floating pane IDs in z-order (first = bottom, last = top).
@@ -922,8 +921,8 @@ impl Tab {
 
     /// Check if two floating panes overlap. Returns true if they do.
     pub fn floating_panes_overlap(&self, a: PaneId, b: PaneId) -> bool {
-        let fa = self.floating_panes.iter().find(|fp| fp.pane.id() == a);
-        let fb = self.floating_panes.iter().find(|fp| fp.pane.id() == b);
+        let fa = self.find_floating(a);
+        let fb = self.find_floating(b);
         if let (Some(fa), Some(fb)) = (fa, fb) {
             let a_right = fa.x + fa.width;
             let a_bottom = fa.y + fa.height;
@@ -952,7 +951,7 @@ impl Tab {
 
     /// Bring a floating pane to the top of the z-order.
     pub fn bring_floating_to_front(&mut self, id: PaneId) -> bool {
-        let idx = self.floating_panes.iter().position(|fp| fp.pane.id() == id);
+        let idx = self.find_floating_idx(id);
         if let Some(idx) = idx {
             let fp = self.floating_panes.remove(idx);
             self.floating_panes.push(fp);
@@ -1017,74 +1016,7 @@ impl Tab {
             None => return false,
         };
 
-        let positions = self
-            .layout
-            .compute_positions(self.size.cols, self.size.rows);
-        let active_pos = match positions.iter().find(|(id, _)| *id == active) {
-            Some((_, pos)) => *pos,
-            None => return false,
-        };
-
-        // Find neighbor in the given direction (same logic as focus_direction)
-        let active_center_col = active_pos.col * 2 + active_pos.cols;
-        let active_center_row = active_pos.row * 2 + active_pos.rows;
-        let mut best: Option<(PaneId, usize)> = None;
-
-        for &(id, pos) in &positions {
-            if id == active {
-                continue;
-            }
-            let center_col = pos.col * 2 + pos.cols;
-            let center_row = pos.row * 2 + pos.rows;
-            let is_candidate = match direction {
-                FocusDirection::Up => {
-                    pos.row + pos.rows <= active_pos.row
-                        && ranges_overlap(
-                            pos.col,
-                            pos.col + pos.cols,
-                            active_pos.col,
-                            active_pos.col + active_pos.cols,
-                        )
-                }
-                FocusDirection::Down => {
-                    pos.row >= active_pos.row + active_pos.rows
-                        && ranges_overlap(
-                            pos.col,
-                            pos.col + pos.cols,
-                            active_pos.col,
-                            active_pos.col + active_pos.cols,
-                        )
-                }
-                FocusDirection::Left => {
-                    pos.col + pos.cols <= active_pos.col
-                        && ranges_overlap(
-                            pos.row,
-                            pos.row + pos.rows,
-                            active_pos.row,
-                            active_pos.row + active_pos.rows,
-                        )
-                }
-                FocusDirection::Right => {
-                    pos.col >= active_pos.col + active_pos.cols
-                        && ranges_overlap(
-                            pos.row,
-                            pos.row + pos.rows,
-                            active_pos.row,
-                            active_pos.row + active_pos.rows,
-                        )
-                }
-            };
-            if is_candidate {
-                let dist =
-                    active_center_col.abs_diff(center_col) + active_center_row.abs_diff(center_row);
-                if best.is_none() || dist < best.unwrap().1 {
-                    best = Some((id, dist));
-                }
-            }
-        }
-
-        if let Some((neighbor_id, _)) = best {
-            // Swap in the layout tree
+        if let Some(neighbor_id) = self.find_neighbor_in_direction(direction) {
             let swapped = self.layout.swap_leaves(active, neighbor_id);
             if swapped {
                 self.sync_pane_sizes();
@@ -1187,7 +1119,7 @@ impl Tab {
 
     /// Send a floating pane to the back (lowest z-order).
     pub fn send_floating_to_back(&mut self, id: PaneId) -> bool {
-        let idx = self.floating_panes.iter().position(|fp| fp.pane.id() == id);
+        let idx = self.find_floating_idx(id);
         if let Some(idx) = idx {
             let fp = self.floating_panes.remove(idx);
             self.floating_panes.insert(0, fp);
@@ -1223,8 +1155,8 @@ impl Tab {
 
     /// Swap the z-order of two floating panes.
     pub fn swap_floating_z_order(&mut self, a: PaneId, b: PaneId) -> bool {
-        let idx_a = self.floating_panes.iter().position(|fp| fp.pane.id() == a);
-        let idx_b = self.floating_panes.iter().position(|fp| fp.pane.id() == b);
+        let idx_a = self.find_floating_idx(a);
+        let idx_b = self.find_floating_idx(b);
         if let (Some(ia), Some(ib)) = (idx_a, idx_b) {
             self.floating_panes.swap(ia, ib);
             true
