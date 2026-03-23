@@ -260,14 +260,22 @@ fn run_daemon_loop_inner<L: DaemonListener>(session_name: &str, listener: L, soc
         }
 
         // ---- Stream PTY output to attached clients ----
-        let mut dead_attached = Vec::new();
-        for (i, stream) in attached_clients.iter_mut().enumerate() {
-            for (pane_id, data) in &pty_output {
+        // Pre-encode messages once, then write the bytes to each client.
+        let encoded_msgs: Vec<Vec<u8>> = pty_output
+            .iter()
+            .filter_map(|(pane_id, data)| {
                 let msg = ServerMessage::PtyOutput {
                     pane_id: *pane_id,
                     data: data.clone(),
                 };
-                if emux_ipc::codec::write_message(stream, &msg).is_err() {
+                emux_ipc::codec::encode(&msg).ok()
+            })
+            .collect();
+
+        let mut dead_attached = Vec::new();
+        for (i, stream) in attached_clients.iter_mut().enumerate() {
+            for encoded in &encoded_msgs {
+                if std::io::Write::write_all(stream, encoded).is_err() {
                     dead_attached.push(i);
                     break;
                 }
@@ -306,16 +314,21 @@ fn run_daemon_loop_inner<L: DaemonListener>(session_name: &str, listener: L, soc
                             // Write to the active pane's PTY.
                             if let Some(active) = session.active_tab().active_pane_id() {
                                 if let Some(pt) = pane_terminals.get_mut(&active) {
-                                    let _ = pt.pty.write(&data);
+                                    if let Err(e) = crate::app::pty_write_all(&mut pt.pty, &data) {
+                                        eprintln!("daemon: PTY write error: {e}");
+                                    }
                                 }
                             }
                             let _ = emux_ipc::codec::write_message(stream, &ServerMessage::Ack);
                             to_remove.push((*id, false));
                         }
                         other => {
-                            let reply =
-                                handle_ipc_message(&mut session, &mut pane_terminals, other);
-                            let _ = emux_ipc::codec::write_message(stream, &reply);
+                            let mut dp = DaemonPanes {
+                                terminals: &mut pane_terminals,
+                            };
+                            let ipc_result =
+                                crate::ipc_handler::handle_ipc(&mut session, &mut dp, other);
+                            let _ = emux_ipc::codec::write_message(stream, &ipc_result.response);
                             to_remove.push((*id, false));
                         }
                     }
@@ -358,6 +371,57 @@ fn run_daemon_loop_inner<L: DaemonListener>(session_name: &str, listener: L, soc
     let _ = std::fs::remove_file(&agent_sock);
 }
 
+// ---------------------------------------------------------------------------
+// PaneAccess impl for daemon's PTY state
+// ---------------------------------------------------------------------------
+
+/// Wrapper providing PaneAccess for the daemon's pane terminals.
+struct DaemonPanes<'a> {
+    terminals: &'a mut std::collections::HashMap<u32, emux_daemon::server::PaneTerminal>,
+}
+
+impl crate::ipc_handler::PaneAccess for DaemonPanes<'_> {
+    fn capture_pane(&mut self, pane_id: u32) -> Option<String> {
+        let pt = self.terminals.get_mut(&pane_id)?;
+        // Drain any pending PTY output before capturing.
+        let mut buf = [0u8; 65536];
+        loop {
+            match std::io::Read::read(&mut pt.pty, &mut buf) {
+                Ok(0) => break,
+                Ok(n) => pt.parser.advance(&mut pt.screen, &buf[..n]),
+                Err(_) => break,
+            }
+        }
+        let content = (0..pt.screen.rows())
+            .map(|r| pt.screen.row_text(r))
+            .collect::<Vec<_>>()
+            .join("\n");
+        Some(content)
+    }
+
+    fn send_keys(&mut self, pane_id: u32, data: &[u8]) -> Result<(), String> {
+        if let Some(pt) = self.terminals.get_mut(&pane_id) {
+            crate::app::pty_write_all(&mut pt.pty, data).map_err(|e| format!("write error: {e}"))
+        } else {
+            Err(format!("pane {pane_id} not found"))
+        }
+    }
+
+    fn remove_pane(&mut self, pane_id: u32) {
+        self.terminals.remove(&pane_id);
+    }
+
+    fn spawn_pane(&mut self, pane_id: u32, cols: usize, rows: usize) -> Result<(), String> {
+        match spawn_pane_terminal(cols, rows) {
+            Ok(pt) => {
+                self.terminals.insert(pane_id, pt);
+                Ok(())
+            }
+            Err(e) => Err(format!("spawn error: {e}")),
+        }
+    }
+}
+
 /// Spawn a PTY + Screen for a pane.
 fn spawn_pane_terminal(
     cols: usize,
@@ -389,209 +453,6 @@ fn spawn_pane_terminal(
         screen: emux_term::Screen::new(cols, rows),
     })
 }
-
-/// Handle an IPC message using session + pane_terminals directly.
-fn handle_ipc_message(
-    session: &mut Session,
-    pane_terminals: &mut std::collections::HashMap<u32, emux_daemon::server::PaneTerminal>,
-    msg: ClientMessage,
-) -> ServerMessage {
-    match msg {
-        ClientMessage::Ping => ServerMessage::Pong,
-        ClientMessage::GetVersion => ServerMessage::Version {
-            version: emux_ipc::PROTOCOL_VERSION,
-        },
-        ClientMessage::Resize { cols, rows } => {
-            session.resize(cols as usize, rows as usize);
-            ServerMessage::Ack
-        }
-        ClientMessage::ListSessions => {
-            let entry = emux_ipc::SessionEntry {
-                name: session.name().to_owned(),
-                tabs: session.tab_count(),
-                panes: session.active_tab().pane_count(),
-                cols: session.size().cols,
-                rows: session.size().rows,
-            };
-            ServerMessage::SessionList {
-                sessions: vec![entry],
-            }
-        }
-        ClientMessage::ListPanes => {
-            let tab = session.active_tab();
-            let positions = tab.compute_positions();
-            let active = tab.active_pane_id();
-            let panes = positions
-                .iter()
-                .map(|(id, pos)| emux_ipc::PaneEntry {
-                    id: *id,
-                    title: tab
-                        .pane(*id)
-                        .map(|p| p.title().to_owned())
-                        .unwrap_or_default(),
-                    cols: pos.cols as u16,
-                    rows: pos.rows as u16,
-                    active: active == Some(*id),
-                    has_notification: tab.pane(*id).map(|p| p.has_notification()).unwrap_or(false),
-                })
-                .collect();
-            ServerMessage::PaneList { panes }
-        }
-        ClientMessage::GetPaneInfo { pane_id } => {
-            let tab = session.active_tab();
-            if let Some(pane) = tab.pane(pane_id) {
-                let positions = tab.compute_positions();
-                let (cols, rows) = positions
-                    .iter()
-                    .find(|(id, _)| *id == pane_id)
-                    .map(|(_, p)| (p.cols as u16, p.rows as u16))
-                    .unwrap_or((0, 0));
-                ServerMessage::PaneInfo {
-                    pane: emux_ipc::PaneEntry {
-                        id: pane_id,
-                        title: pane.title().to_owned(),
-                        cols,
-                        rows,
-                        active: tab.active_pane_id() == Some(pane_id),
-                        has_notification: pane.has_notification(),
-                    },
-                }
-            } else {
-                ServerMessage::Error {
-                    message: format!("pane {pane_id} not found"),
-                }
-            }
-        }
-        ClientMessage::CapturePane { pane_id } => {
-            if let Some(pt) = pane_terminals.get_mut(&pane_id) {
-                let mut buf = [0u8; 65536];
-                loop {
-                    match pt.pty.read(&mut buf) {
-                        Ok(0) => break,
-                        Ok(n) => pt.parser.advance(&mut pt.screen, &buf[..n]),
-                        Err(_) => break,
-                    }
-                }
-                let content = (0..pt.screen.rows())
-                    .map(|r| pt.screen.row_text(r))
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                ServerMessage::PaneCaptured { pane_id, content }
-            } else {
-                ServerMessage::Error {
-                    message: format!("pane {pane_id} not found"),
-                }
-            }
-        }
-        ClientMessage::SendKeys { pane_id, keys } => {
-            if let Some(pt) = pane_terminals.get_mut(&pane_id) {
-                let _ = pt.pty.write(keys.as_bytes());
-                ServerMessage::Ack
-            } else {
-                ServerMessage::Error {
-                    message: format!("pane {pane_id} not found"),
-                }
-            }
-        }
-        ClientMessage::SplitPane { direction, .. } => {
-            let dir = match direction {
-                emux_ipc::SplitDirection::Horizontal => SplitDirection::Horizontal,
-                emux_ipc::SplitDirection::Vertical => SplitDirection::Vertical,
-            };
-            match session.active_tab_mut().split_pane(dir) {
-                Some(new_id) => {
-                    let positions = session.active_tab().compute_positions();
-                    let (cols, rows) = positions
-                        .iter()
-                        .find(|(id, _)| *id == new_id)
-                        .map(|(_, p)| (p.cols, p.rows))
-                        .unwrap_or((80, 24));
-                    if let Ok(pt) = spawn_pane_terminal(cols, rows) {
-                        pane_terminals.insert(new_id, pt);
-                    }
-                    ServerMessage::SpawnResult { pane_id: new_id }
-                }
-                None => ServerMessage::Error {
-                    message: "cannot split pane".into(),
-                },
-            }
-        }
-        ClientMessage::SetPaneTitle { pane_id, title } => {
-            if let Some(pane) = session.active_tab_mut().pane_mut(pane_id) {
-                pane.set_title(title);
-                ServerMessage::Ack
-            } else {
-                ServerMessage::Error {
-                    message: format!("pane {pane_id} not found"),
-                }
-            }
-        }
-        ClientMessage::FocusPane { pane_id } => {
-            if session.active_tab_mut().focus_pane(pane_id) {
-                ServerMessage::Ack
-            } else {
-                ServerMessage::Error {
-                    message: format!("pane {pane_id} not found"),
-                }
-            }
-        }
-        ClientMessage::SpawnPane { ref direction } => {
-            let dir = match direction.as_deref() {
-                Some("horizontal") => SplitDirection::Horizontal,
-                _ => SplitDirection::Vertical,
-            };
-            match session.active_tab_mut().split_pane(dir) {
-                Some(pane_id) => ServerMessage::SpawnResult { pane_id },
-                None => ServerMessage::Error {
-                    message: "cannot split pane".into(),
-                },
-            }
-        }
-        ClientMessage::KillPane { pane_id } => {
-            if session.active_tab_mut().close_pane(pane_id) {
-                pane_terminals.remove(&pane_id);
-                ServerMessage::Ack
-            } else {
-                ServerMessage::Error {
-                    message: format!("cannot kill pane {pane_id}"),
-                }
-            }
-        }
-        ClientMessage::Attach { .. }
-        | ClientMessage::Detach
-        | ClientMessage::KillSession { .. }
-        | ClientMessage::KeyInput { .. } => ServerMessage::Ack,
-        ClientMessage::ResizePane {
-            pane_id,
-            cols,
-            rows,
-        } => {
-            let tab = session.active_tab_mut();
-            if tab.pane(pane_id).is_none() {
-                return ServerMessage::Error {
-                    message: format!("pane {pane_id} not found"),
-                };
-            }
-            let positions = tab.compute_positions();
-            if let Some((_, pos)) = positions.iter().find(|(id, _)| *id == pane_id) {
-                let dc = cols as i32 - pos.cols as i32;
-                let dr = rows as i32 - pos.rows as i32;
-                if dc != 0 {
-                    tab.resize_pane(pane_id, emux_mux::ResizeDirection::Right, dc);
-                }
-                if dr != 0 {
-                    tab.resize_pane(pane_id, emux_mux::ResizeDirection::Down, dr);
-                }
-                ServerMessage::Ack
-            } else {
-                ServerMessage::Error {
-                    message: format!("pane {pane_id} not found"),
-                }
-            }
-        }
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Listener abstraction for Unix/Windows
 // ---------------------------------------------------------------------------
@@ -645,250 +506,5 @@ impl DaemonListener for std::net::TcpListener {
             Ok((stream, _)) => Some(stream),
             Err(_) => None,
         }
-    }
-}
-
-// Legacy loop body — replaced by run_daemon_loop_inner which owns PTYs.
-// Kept as dead code temporarily for reference; will be removed.
-#[allow(dead_code)]
-fn _run_daemon_loop_body_legacy<S: std::io::Read + std::io::Write>(
-    session: &mut Session,
-    clients: &mut Vec<(u64, S)>,
-    _next_id: &mut u64,
-    shutdown: &mut bool,
-) {
-    use emux_ipc::codec;
-
-    // Process messages from each client.
-    let mut to_remove = Vec::new();
-    let mut per_client_reply: Vec<(u64, ServerMessage)> = Vec::new();
-    let mut broadcast_msgs: Vec<ServerMessage> = Vec::new();
-
-    for (id, stream) in clients.iter_mut() {
-        match codec::read_message::<_, ClientMessage>(stream) {
-            Ok(msg) => {
-                let (reply, should_broadcast) = match msg {
-                    ClientMessage::Ping => (ServerMessage::Pong, false),
-                    ClientMessage::GetVersion => (
-                        ServerMessage::Version {
-                            version: emux_ipc::PROTOCOL_VERSION,
-                        },
-                        false,
-                    ),
-                    ClientMessage::Resize { cols, rows } => {
-                        session.resize(cols as usize, rows as usize);
-                        (ServerMessage::Ack, false)
-                    }
-                    ClientMessage::Detach => {
-                        to_remove.push(*id);
-                        (ServerMessage::Ack, false)
-                    }
-                    ClientMessage::ListSessions => {
-                        let entry = emux_ipc::SessionEntry {
-                            name: session.name().to_owned(),
-                            tabs: session.tab_count(),
-                            panes: session.active_tab().pane_count(),
-                            cols: session.size().cols,
-                            rows: session.size().rows,
-                        };
-                        (
-                            ServerMessage::SessionList {
-                                sessions: vec![entry],
-                            },
-                            false,
-                        )
-                    }
-                    ClientMessage::KillSession { ref name } => {
-                        if name == session.name() {
-                            *shutdown = true;
-                            (ServerMessage::Ack, false)
-                        } else {
-                            (
-                                ServerMessage::Error {
-                                    message: format!("no such session: {name}"),
-                                },
-                                false,
-                            )
-                        }
-                    }
-                    ClientMessage::SpawnPane { ref direction } => {
-                        let dir = match direction.as_deref() {
-                            Some("horizontal") => SplitDirection::Horizontal,
-                            _ => SplitDirection::Vertical,
-                        };
-                        match session.active_tab_mut().split_pane(dir) {
-                            Some(pane_id) => (ServerMessage::SpawnResult { pane_id }, true),
-                            None => (
-                                ServerMessage::Error {
-                                    message: "cannot split pane".into(),
-                                },
-                                false,
-                            ),
-                        }
-                    }
-                    ClientMessage::KillPane { pane_id } => {
-                        if session.active_tab_mut().close_pane(pane_id) {
-                            (ServerMessage::Ack, true)
-                        } else {
-                            (
-                                ServerMessage::Error {
-                                    message: format!("cannot kill pane {pane_id}"),
-                                },
-                                false,
-                            )
-                        }
-                    }
-                    ClientMessage::FocusPane { pane_id } => {
-                        if session.active_tab_mut().focus_pane(pane_id) {
-                            (ServerMessage::Ack, true)
-                        } else {
-                            (
-                                ServerMessage::Error {
-                                    message: format!("pane {pane_id} not found"),
-                                },
-                                false,
-                            )
-                        }
-                    }
-                    ClientMessage::KeyInput { .. } => (ServerMessage::Ack, true),
-
-                    // Agent / AI team protocol — layout-only handling in daemon.
-                    // Real PTY-backed handling happens in the event loop's
-                    // agent socket (process_agent_ipc).
-                    ClientMessage::SplitPane { direction, .. } => {
-                        let dir = match direction {
-                            emux_ipc::SplitDirection::Horizontal => SplitDirection::Horizontal,
-                            emux_ipc::SplitDirection::Vertical => SplitDirection::Vertical,
-                        };
-                        match session.active_tab_mut().split_pane(dir) {
-                            Some(pane_id) => (ServerMessage::SpawnResult { pane_id }, true),
-                            None => (
-                                ServerMessage::Error {
-                                    message: "cannot split pane".into(),
-                                },
-                                false,
-                            ),
-                        }
-                    }
-                    ClientMessage::ListPanes => {
-                        let tab = session.active_tab();
-                        let positions = tab.compute_positions();
-                        let active = tab.active_pane_id();
-                        let panes = positions
-                            .iter()
-                            .map(|(id, pos)| emux_ipc::PaneEntry {
-                                id: *id,
-                                title: tab
-                                    .pane(*id)
-                                    .map(|p| p.title().to_owned())
-                                    .unwrap_or_default(),
-                                cols: pos.cols as u16,
-                                rows: pos.rows as u16,
-                                active: active == Some(*id),
-                                has_notification: tab
-                                    .pane(*id)
-                                    .map(|p| p.has_notification())
-                                    .unwrap_or(false),
-                            })
-                            .collect();
-                        (ServerMessage::PaneList { panes }, false)
-                    }
-                    ClientMessage::GetPaneInfo { pane_id } => {
-                        let tab = session.active_tab();
-                        if let Some(pane) = tab.pane(pane_id) {
-                            let positions = tab.compute_positions();
-                            let (cols, rows) = positions
-                                .iter()
-                                .find(|(id, _)| *id == pane_id)
-                                .map(|(_, p)| (p.cols as u16, p.rows as u16))
-                                .unwrap_or((0, 0));
-                            (
-                                ServerMessage::PaneInfo {
-                                    pane: emux_ipc::PaneEntry {
-                                        id: pane_id,
-                                        title: pane.title().to_owned(),
-                                        cols,
-                                        rows,
-                                        active: tab.active_pane_id() == Some(pane_id),
-                                        has_notification: pane.has_notification(),
-                                    },
-                                },
-                                false,
-                            )
-                        } else {
-                            (
-                                ServerMessage::Error {
-                                    message: format!("pane {pane_id} not found"),
-                                },
-                                false,
-                            )
-                        }
-                    }
-                    ClientMessage::SetPaneTitle { pane_id, title } => {
-                        if let Some(pane) = session.active_tab_mut().pane_mut(pane_id) {
-                            pane.set_title(title);
-                            (ServerMessage::Ack, false)
-                        } else {
-                            (
-                                ServerMessage::Error {
-                                    message: format!("pane {pane_id} not found"),
-                                },
-                                false,
-                            )
-                        }
-                    }
-                    ClientMessage::CapturePane { .. }
-                    | ClientMessage::SendKeys { .. }
-                    | ClientMessage::ResizePane { .. }
-                    | ClientMessage::Attach { .. } => (ServerMessage::Ack, false),
-                };
-                // Always send the reply to the originating client.
-                per_client_reply.push((*id, reply.clone()));
-                // For state-changing messages, broadcast an Ack to all
-                // OTHER clients so they know to refresh.
-                if should_broadcast {
-                    broadcast_msgs.push(reply);
-                }
-            }
-            Err(emux_ipc::CodecError::Io(ref e))
-                if e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::TimedOut => {
-            }
-            Err(_) => {
-                to_remove.push(*id);
-            }
-        }
-    }
-
-    // Send per-client replies.
-    for (id, reply) in &per_client_reply {
-        if let Some((_, stream)) = clients.iter_mut().find(|(cid, _)| cid == id)
-            && codec::write_message(stream, reply).is_err()
-        {
-            to_remove.push(*id);
-        }
-    }
-
-    // Broadcast state-change notifications to all clients that did NOT
-    // originate the message (session sharing: all viewers see updates).
-    if !broadcast_msgs.is_empty() {
-        let originator_ids: std::collections::HashSet<u64> =
-            per_client_reply.iter().map(|(id, _)| *id).collect();
-        for (id, stream) in clients.iter_mut() {
-            if !originator_ids.contains(id) {
-                for bcast in &broadcast_msgs {
-                    if codec::write_message(stream, bcast).is_err() {
-                        to_remove.push(*id);
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    // Remove disconnected clients.
-    to_remove.sort_unstable();
-    to_remove.dedup();
-    for id in &to_remove {
-        clients.retain(|(cid, _)| cid != id);
     }
 }

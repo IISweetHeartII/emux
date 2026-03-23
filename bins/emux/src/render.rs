@@ -6,6 +6,8 @@ use emux_render::damage::DamageTracker;
 use emux_render::text::render_row;
 use emux_term::Screen;
 
+use emux_term::selection::Selection;
+
 use crate::app::{App, InputMode};
 
 // ---------------------------------------------------------------------------
@@ -48,6 +50,11 @@ pub(crate) fn render_all<W: Write>(
 
     for &(pane_id, ref pos) in &positions {
         if let Some(ps) = app.panes.get(&pane_id) {
+            let selection = app
+                .mouse_selection
+                .as_ref()
+                .filter(|ms| ms.pane_id == pane_id)
+                .map(|ms| &ms.selection);
             render_pane_region(
                 writer,
                 &ps.screen,
@@ -56,6 +63,7 @@ pub(crate) fn render_all<W: Write>(
                 tc,
                 pane_area_rows,
                 force_clear,
+                selection,
             )?;
         }
     }
@@ -111,6 +119,7 @@ pub(crate) fn render_all<W: Write>(
 /// Render one pane's screen content into a region of the terminal.
 /// Only rows marked dirty in the `DamageTracker` are redrawn unless
 /// `force_all` is set (initial paint / resize).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn render_pane_region<W: Write>(
     writer: &mut W,
     screen: &Screen,
@@ -119,10 +128,13 @@ pub(crate) fn render_pane_region<W: Write>(
     _total_cols: usize,
     _pane_area_rows: usize,
     force_all: bool,
+    selection: Option<&Selection>,
 ) -> io::Result<()> {
     let draw_rows = pos.rows.min(screen.rows());
     let draw_cols = pos.cols.min(screen.cols());
     let mut prev_style: Option<style::ContentStyle> = None;
+    let sb_len = screen.grid.scrollback_len();
+    let vp_offset = screen.viewport_offset();
 
     for r in 0..draw_rows {
         // Skip clean rows when not doing a full repaint.
@@ -132,11 +144,33 @@ pub(crate) fn render_pane_region<W: Write>(
         writer.queue(ct_cursor::MoveTo(pos.col as u16, (pos.row + r) as u16))?;
         let display_row = screen.viewport_row(r);
         let spans = render_row(&display_row.cells, draw_cols);
+
+        // Compute the absolute row for selection hit-testing.
+        let abs_row = sb_len + r - vp_offset.min(sb_len + r);
+
+        let mut col_offset = 0usize;
         for (content_style, text) in spans {
-            if prev_style.as_ref() != Some(&content_style) {
-                writer.queue(style::SetStyle(content_style))?;
-                prev_style = Some(content_style);
+            // Check if any character in this span is selected.
+            let in_selection = selection.is_some_and(|sel| {
+                let text_len = text.chars().count();
+                (0..text_len).any(|i| sel.contains(abs_row, col_offset + i))
+            });
+
+            let effective_style = if in_selection {
+                // Invert colors for selection highlight.
+                let mut s = content_style;
+                s.background_color = Some(style::Color::White);
+                s.foreground_color = Some(style::Color::Black);
+                s
+            } else {
+                content_style
+            };
+
+            if prev_style.as_ref() != Some(&effective_style) {
+                writer.queue(style::SetStyle(effective_style))?;
+                prev_style = Some(effective_style);
             }
+            col_offset += text.chars().count();
             writer.queue(style::Print(&text))?;
         }
     }
@@ -441,5 +475,71 @@ mod tests {
     fn format_bar_with_korean_session_name() {
         let bar = format_bar(" [테스트] ", "emux 0.1.0 ", 40);
         assert_eq!(display_width(&bar), 40);
+    }
+
+    // ── display_width edge cases ────────────────────────────────────
+
+    #[test]
+    fn display_width_cjk_unified() {
+        // CJK Unified Ideographs (U+4E00..U+9FFF)
+        assert_eq!(display_width("中文"), 4);
+        assert_eq!(display_width("漢字"), 4);
+    }
+
+    #[test]
+    fn display_width_japanese() {
+        // Hiragana (U+3040..U+309F)
+        assert_eq!(display_width("あいう"), 6);
+        // Katakana (fullwidth forms)
+        assert_eq!(display_width("アイウ"), 6);
+    }
+
+    #[test]
+    fn display_width_fullwidth_forms() {
+        // Fullwidth Latin (U+FF01..U+FF60)
+        assert_eq!(display_width("Ａ"), 2); // fullwidth A
+        assert_eq!(display_width("ＡＢ"), 4);
+    }
+
+    #[test]
+    fn display_width_mixed() {
+        // Mix of ASCII and wide characters
+        assert_eq!(display_width("hello世界"), 9); // 5 + 2*2
+        assert_eq!(display_width("AB한CD"), 6); // 2 + 2 + 2
+    }
+
+    #[test]
+    fn display_width_hangul_syllables() {
+        // Hangul Syllables (U+AC00..U+D7AF)
+        assert_eq!(display_width("가나다"), 6);
+    }
+
+    // ── format_bar edge cases ───────────────────────────────────────
+
+    #[test]
+    fn format_bar_zero_width() {
+        let bar = format_bar("AB", "CD", 0);
+        assert_eq!(display_width(&bar), 0);
+    }
+
+    #[test]
+    fn format_bar_exact_fit() {
+        let bar = format_bar("AB", "CD", 4);
+        assert_eq!(display_width(&bar), 4);
+        assert_eq!(&bar, "ABCD");
+    }
+
+    #[test]
+    fn format_bar_wide_chars_truncation() {
+        // Left side has wide chars that can't fit
+        let bar = format_bar("한글테스트", "R", 5);
+        assert_eq!(display_width(&bar), 5);
+    }
+
+    #[test]
+    fn format_bar_empty_strings() {
+        let bar = format_bar("", "", 10);
+        assert_eq!(display_width(&bar), 10);
+        assert_eq!(&bar, "          ");
     }
 }

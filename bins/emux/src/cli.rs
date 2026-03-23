@@ -20,7 +20,7 @@ pub(crate) fn print_help() {
     println!("  upgrade          Update emux to the latest version\n");
     println!("Options:");
     println!("  -h, --help       Show this help message");
-    println!("  -V, --version    Show version");
+    println!("  -v, -V, --version  Show version");
     println!("\nKeybindings (default leader: Ctrl+Shift):");
     println!("  Leader + d       Split pane down");
     println!("  Leader + r       Split pane right");
@@ -156,7 +156,7 @@ pub(crate) fn cmd_ssh(args: &[String]) -> Result<(), AppError> {
     let dest = ssh
         .domain
         .ssh_destination()
-        .expect("parse_ssh_args always returns Remote");
+        .ok_or_else(|| AppError::Msg("ssh requires a remote destination".into()))?;
 
     match ssh.subcmd {
         SshSubcommand::Attach { ref session } => {

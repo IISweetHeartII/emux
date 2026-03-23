@@ -4,11 +4,14 @@
 mod logging;
 mod app;
 mod cli;
+mod command;
 mod daemon;
 mod error;
 mod event_loop;
 mod input;
+mod ipc_handler;
 mod keybindings;
+mod mouse;
 mod operations;
 mod render;
 mod upgrade;
@@ -41,7 +44,7 @@ fn main() -> Result<(), AppError> {
         let cmd = args.get(1).map(|s| s.as_str()).unwrap_or("");
         match cmd {
             "list" | "ls" | "l" | "kill" | "ssh" | "upgrade" | "--help" | "-h" | "--version"
-            | "-V" => {
+            | "-V" | "-v" => {
                 // These are safe inside emux — allow them.
             }
             _ => {
@@ -57,7 +60,7 @@ fn main() -> Result<(), AppError> {
                 print_help();
                 return Ok(());
             }
-            "--version" | "-V" => {
+            "--version" | "-V" | "-v" => {
                 println!("emux {}", env!("CARGO_PKG_VERSION"));
                 return Ok(());
             }
