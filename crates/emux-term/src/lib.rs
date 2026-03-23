@@ -10,6 +10,7 @@ pub mod performer;
 pub mod screen;
 pub mod search;
 pub mod selection;
+pub mod unicode;
 
 pub use color::Color;
 pub use cursor::{Cursor, CursorShape, SavedCursor};
@@ -18,9 +19,11 @@ pub use hints::{HintKind, HintMatch};
 pub use modes::{KittyKeyboardFlags, Modes, MouseMode};
 pub use screen::{
     ClearTabStop, DamageMode, DamageRegion, EraseDisplay, EraseLine, Notification, Screen,
-    SearchError, SearchMatch, SearchState, ShellMark, ShellMarkKind,
+    ShellMark, ShellMarkKind,
 };
+pub use search::{ScreenSearcher, SearchError, SearchMatch, SearchState};
 pub use selection::{
     Selection, SelectionMode, SelectionPoint, SelectionState, base64_decode, base64_encode,
     osc52_clipboard,
 };
+pub use unicode::char_width;

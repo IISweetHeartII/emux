@@ -18,6 +18,7 @@ use crate::color::Color;
 use crate::cursor::{Cursor, SavedCursor};
 use crate::grid::{CellAttrs, Grid};
 use crate::modes::Modes;
+use crate::unicode::char_width;
 
 /// Type of shell integration mark (OSC 133 semantic zones).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -244,11 +245,6 @@ pub struct Screen {
     /// Saved cursor state specifically for mode-1049 DECSC/DECRC behaviour.
     alt_saved_cursor: Option<SavedCursor>,
 
-    // ── Search state ─────────────────────────────────────────────────
-    /// Current search state (not serialized).
-    #[serde(skip)]
-    search: Option<SearchState>,
-
     // ── Notifications ─────────────────────────────────────────────────
     /// Notifications received via OSC 9 / 99 / 777.
     #[serde(skip)]
@@ -321,7 +317,6 @@ impl Screen {
             alt_saved_cursor: None,
             notifications: Vec::new(),
             has_unread_notification: false,
-            search: None,
             shell_marks: Vec::new(),
             clipboard: None,
             pending_passthrough: Vec::new(),
@@ -1680,237 +1675,6 @@ impl Screen {
     pub fn damage_mode(&self) -> DamageMode {
         self.damage_mode
     }
-}
-
-// ── Smart scrollback search ──────────────────────────────────────────
-
-// Types are defined in the dedicated `search` module and re-exported.
-pub use crate::search::{SearchError, SearchMatch, SearchState};
-
-impl Screen {
-    /// Access the current search state (if any).
-    pub fn search_state(&self) -> &Option<SearchState> {
-        &self.search
-    }
-
-    /// Collect the text for every row in the combined buffer (scrollback then viewport).
-    fn all_row_texts(&self) -> Vec<String> {
-        let sb_len = self.grid.scrollback_len();
-        let vp_rows = self.rows();
-        let mut texts = Vec::with_capacity(sb_len + vp_rows);
-        for i in 0..sb_len {
-            texts.push(self.grid.scrollback_row_text(i));
-        }
-        for r in 0..vp_rows {
-            texts.push(self.grid.row_text(r));
-        }
-        texts
-    }
-
-    /// Search forward for `query`, populating the search state with all
-    /// matches and setting the current match to the first one found
-    /// at or after the viewport top.
-    pub fn search_forward(&mut self, query: &str, case_sensitive: bool) -> Vec<SearchMatch> {
-        let texts = self.all_row_texts();
-        let matches = crate::search::find_all_matches(&texts, query, case_sensitive);
-        let sb_len = self.grid.scrollback_len();
-
-        let current = if matches.is_empty() {
-            None
-        } else {
-            matches.iter().position(|m| m.row >= sb_len).or(Some(0))
-        };
-
-        let result = matches.clone();
-        self.search = Some(SearchState {
-            query: query.to_string(),
-            matches,
-            current,
-            case_sensitive,
-            regex: false,
-        });
-        result
-    }
-
-    /// Search backward for `query`, populating the search state with all
-    /// matches and setting the current match to the last one found
-    /// before the viewport top.
-    pub fn search_backward(&mut self, query: &str, case_sensitive: bool) -> Vec<SearchMatch> {
-        let texts = self.all_row_texts();
-        let matches = crate::search::find_all_matches(&texts, query, case_sensitive);
-        let sb_len = self.grid.scrollback_len();
-
-        let current = if matches.is_empty() {
-            None
-        } else {
-            matches
-                .iter()
-                .rposition(|m| m.row < sb_len)
-                .or(Some(matches.len() - 1))
-        };
-
-        let result = matches.clone();
-        self.search = Some(SearchState {
-            query: query.to_string(),
-            matches,
-            current,
-            case_sensitive,
-            regex: false,
-        });
-        result
-    }
-
-    /// Search using a regex pattern.
-    pub fn search_regex(
-        &mut self,
-        pattern: &str,
-        case_sensitive: bool,
-    ) -> Result<Vec<SearchMatch>, SearchError> {
-        let texts = self.all_row_texts();
-        let matches = crate::search::find_all_matches_regex(&texts, pattern, case_sensitive)?;
-        let sb_len = self.grid.scrollback_len();
-
-        let current = if matches.is_empty() {
-            None
-        } else {
-            matches.iter().position(|m| m.row >= sb_len).or(Some(0))
-        };
-
-        let result = matches.clone();
-        self.search = Some(SearchState {
-            query: pattern.to_string(),
-            matches,
-            current,
-            case_sensitive,
-            regex: true,
-        });
-        Ok(result)
-    }
-
-    /// Advance to the next match (wrapping around).
-    pub fn search_next(&mut self) -> Option<&SearchMatch> {
-        let state = self.search.as_mut()?;
-        if state.matches.is_empty() {
-            return None;
-        }
-        let next = match state.current {
-            Some(idx) => (idx + 1) % state.matches.len(),
-            None => 0,
-        };
-        state.current = Some(next);
-        let state = self.search.as_ref().unwrap();
-        Some(&state.matches[state.current.unwrap()])
-    }
-
-    /// Move to the previous match (wrapping around).
-    pub fn search_prev(&mut self) -> Option<&SearchMatch> {
-        let state = self.search.as_mut()?;
-        if state.matches.is_empty() {
-            return None;
-        }
-        let prev = match state.current {
-            Some(0) => state.matches.len() - 1,
-            Some(idx) => idx - 1,
-            None => state.matches.len() - 1,
-        };
-        state.current = Some(prev);
-        let state = self.search.as_ref().unwrap();
-        Some(&state.matches[state.current.unwrap()])
-    }
-
-    /// Clear the search state and remove all highlights.
-    pub fn clear_search(&mut self) {
-        self.search = None;
-    }
-
-    /// Get the currently active match, if any.
-    pub fn current_match(&self) -> Option<&SearchMatch> {
-        let state = self.search.as_ref()?;
-        let idx = state.current?;
-        state.matches.get(idx)
-    }
-
-    /// Get all matches that are currently visible in the viewport.
-    pub fn visible_matches(&self) -> Vec<&SearchMatch> {
-        let state = match self.search.as_ref() {
-            Some(s) => s,
-            None => return Vec::new(),
-        };
-        let sb_len = self.grid.scrollback_len();
-        let vp_start = sb_len;
-        let vp_end = sb_len + self.rows();
-        state
-            .matches
-            .iter()
-            .filter(|m| m.row >= vp_start && m.row < vp_end)
-            .collect()
-    }
-}
-
-/// Determine the display width of a character.
-/// Returns 2 for CJK wide characters, 1 for most others, 0 for combining.
-fn char_width(c: char) -> u8 {
-    let cp = c as u32;
-    // Fast path: ASCII printable (most common case)
-    if cp < 0x7F {
-        return if cp >= 0x20 { 1 } else { 0 };
-    }
-
-    // Zero-width characters
-    if cp == 0x200B  // Zero-Width Space
-        || cp == 0x200C  // Zero-Width Non-Joiner
-        || cp == 0x200D  // Zero-Width Joiner
-        || cp == 0xFEFF  // BOM / Zero-Width No-Break Space
-        || cp == 0x2060  // Word Joiner
-        || cp == 0x2061  // Function Application
-        || cp == 0x2062  // Invisible Times
-        || cp == 0x2063  // Invisible Separator
-        || cp == 0x2064  // Invisible Plus
-        || cp == 0x180E
-    // Mongolian Vowel Separator
-    {
-        return 0;
-    }
-
-    // Combining characters (partial list of common ranges)
-    if (0x0300..=0x036F).contains(&cp)   // Combining Diacritical Marks
-        || (0x1AB0..=0x1AFF).contains(&cp) // Combining Diacritical Marks Extended
-        || (0x1DC0..=0x1DFF).contains(&cp) // Combining Diacritical Marks Supplement
-        || (0x20D0..=0x20FF).contains(&cp) // Combining Diacritical Marks for Symbols
-        || (0xFE20..=0xFE2F).contains(&cp)
-    // Combining Half Marks
-    {
-        return 0;
-    }
-
-    // Wide characters
-    if (0x1100..=0x115F).contains(&cp)    // Hangul Jamo
-        || (0x2329..=0x232A).contains(&cp) // CJK angle brackets
-        || (0x2E80..=0x303E).contains(&cp) // CJK misc
-        || (0x3040..=0x33BF).contains(&cp) // Hiragana, Katakana, Bopomofo, etc.
-        || (0x3400..=0x4DBF).contains(&cp) // CJK Unified Ideographs Extension A
-        || (0x4E00..=0x9FFF).contains(&cp) // CJK Unified Ideographs
-        || (0xA000..=0xA4CF).contains(&cp) // Yi
-        || (0xAC00..=0xD7A3).contains(&cp) // Hangul Syllables
-        || (0xF900..=0xFAFF).contains(&cp) // CJK Compatibility Ideographs
-        || (0xFE10..=0xFE19).contains(&cp) // Vertical forms
-        || (0xFE30..=0xFE6F).contains(&cp) // CJK Compatibility Forms
-        || (0xFF01..=0xFF60).contains(&cp) // Fullwidth Forms
-        || (0xFFE0..=0xFFE6).contains(&cp) // Fullwidth Signs
-        || (0x1F000..=0x1F9FF).contains(&cp) // Various emoji/symbols
-        || (0x20000..=0x2FA1F).contains(&cp) // CJK Extension B and beyond
-        || (0x30000..=0x3134F).contains(&cp)
-    // CJK Extension G
-    {
-        return 2;
-    }
-
-    // Control characters
-    if cp < 0x20 || (0x7F..=0x9F).contains(&cp) {
-        return 0;
-    }
-
-    1
 }
 
 #[cfg(test)]

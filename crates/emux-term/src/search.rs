@@ -7,6 +7,8 @@
 
 use std::fmt;
 
+use crate::screen::Screen;
+
 /// A single search match in the combined scrollback + viewport buffer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SearchMatch {
@@ -139,6 +141,195 @@ pub fn prev_match_index(current: Option<usize>, total: usize) -> Option<usize> {
         Some(idx) => idx - 1,
         None => total - 1,
     })
+}
+
+// ---------------------------------------------------------------------------
+// ScreenSearcher — search state decoupled from Screen
+// ---------------------------------------------------------------------------
+
+/// Collect the text for every row in the combined buffer (scrollback then viewport).
+fn all_row_texts(screen: &Screen) -> Vec<String> {
+    let sb_len = screen.grid.scrollback_len();
+    let vp_rows = screen.rows();
+    let mut texts = Vec::with_capacity(sb_len + vp_rows);
+    for i in 0..sb_len {
+        texts.push(screen.grid.scrollback_row_text(i));
+    }
+    for r in 0..vp_rows {
+        texts.push(screen.grid.row_text(r));
+    }
+    texts
+}
+
+/// Manages search state independently from [`Screen`].
+///
+/// Holds the current [`SearchState`] and provides convenience methods
+/// that operate on a borrowed `Screen` for reading row texts.
+#[derive(Debug, Clone, Default)]
+pub struct ScreenSearcher {
+    state: Option<SearchState>,
+}
+
+impl ScreenSearcher {
+    /// Create a new searcher with no active search.
+    pub fn new() -> Self {
+        Self { state: None }
+    }
+
+    /// Access the current search state (if any).
+    pub fn search_state(&self) -> &Option<SearchState> {
+        &self.state
+    }
+
+    /// Search forward for `query`, populating the search state with all
+    /// matches and setting the current match to the first one found
+    /// at or after the viewport top.
+    pub fn search_forward(
+        &mut self,
+        screen: &Screen,
+        query: &str,
+        case_sensitive: bool,
+    ) -> Vec<SearchMatch> {
+        let texts = all_row_texts(screen);
+        let matches = find_all_matches(&texts, query, case_sensitive);
+        let sb_len = screen.grid.scrollback_len();
+
+        let current = if matches.is_empty() {
+            None
+        } else {
+            matches.iter().position(|m| m.row >= sb_len).or(Some(0))
+        };
+
+        let result = matches.clone();
+        self.state = Some(SearchState {
+            query: query.to_string(),
+            matches,
+            current,
+            case_sensitive,
+            regex: false,
+        });
+        result
+    }
+
+    /// Search backward for `query`, populating the search state with all
+    /// matches and setting the current match to the last one found
+    /// before the viewport top.
+    pub fn search_backward(
+        &mut self,
+        screen: &Screen,
+        query: &str,
+        case_sensitive: bool,
+    ) -> Vec<SearchMatch> {
+        let texts = all_row_texts(screen);
+        let matches = find_all_matches(&texts, query, case_sensitive);
+        let sb_len = screen.grid.scrollback_len();
+
+        let current = if matches.is_empty() {
+            None
+        } else {
+            matches
+                .iter()
+                .rposition(|m| m.row < sb_len)
+                .or(Some(matches.len() - 1))
+        };
+
+        let result = matches.clone();
+        self.state = Some(SearchState {
+            query: query.to_string(),
+            matches,
+            current,
+            case_sensitive,
+            regex: false,
+        });
+        result
+    }
+
+    /// Search using a regex pattern.
+    pub fn search_regex(
+        &mut self,
+        screen: &Screen,
+        pattern: &str,
+        case_sensitive: bool,
+    ) -> Result<Vec<SearchMatch>, SearchError> {
+        let texts = all_row_texts(screen);
+        let matches = find_all_matches_regex(&texts, pattern, case_sensitive)?;
+        let sb_len = screen.grid.scrollback_len();
+
+        let current = if matches.is_empty() {
+            None
+        } else {
+            matches.iter().position(|m| m.row >= sb_len).or(Some(0))
+        };
+
+        let result = matches.clone();
+        self.state = Some(SearchState {
+            query: pattern.to_string(),
+            matches,
+            current,
+            case_sensitive,
+            regex: true,
+        });
+        Ok(result)
+    }
+
+    /// Advance to the next match (wrapping around).
+    pub fn search_next(&mut self) -> Option<&SearchMatch> {
+        let state = self.state.as_mut()?;
+        if state.matches.is_empty() {
+            return None;
+        }
+        let next = match state.current {
+            Some(idx) => (idx + 1) % state.matches.len(),
+            None => 0,
+        };
+        state.current = Some(next);
+        let state = self.state.as_ref().unwrap();
+        Some(&state.matches[state.current.unwrap()])
+    }
+
+    /// Move to the previous match (wrapping around).
+    pub fn search_prev(&mut self) -> Option<&SearchMatch> {
+        let state = self.state.as_mut()?;
+        if state.matches.is_empty() {
+            return None;
+        }
+        let prev = match state.current {
+            Some(0) => state.matches.len() - 1,
+            Some(idx) => idx - 1,
+            None => state.matches.len() - 1,
+        };
+        state.current = Some(prev);
+        let state = self.state.as_ref().unwrap();
+        Some(&state.matches[state.current.unwrap()])
+    }
+
+    /// Clear the search state and remove all highlights.
+    pub fn clear_search(&mut self) {
+        self.state = None;
+    }
+
+    /// Get the currently active match, if any.
+    pub fn current_match(&self) -> Option<&SearchMatch> {
+        let state = self.state.as_ref()?;
+        let idx = state.current?;
+        state.matches.get(idx)
+    }
+
+    /// Get all matches that are currently visible in the viewport.
+    pub fn visible_matches(&self, screen: &Screen) -> Vec<&SearchMatch> {
+        let state = match self.state.as_ref() {
+            Some(s) => s,
+            None => return Vec::new(),
+        };
+        let sb_len = screen.grid.scrollback_len();
+        let vp_start = sb_len;
+        let vp_end = sb_len + screen.rows();
+        state
+            .matches
+            .iter()
+            .filter(|m| m.row >= vp_start && m.row < vp_end)
+            .collect()
+    }
 }
 
 #[cfg(test)]

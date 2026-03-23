@@ -1,5 +1,6 @@
 mod common;
 use common::TestTerminal;
+use emux_term::search::ScreenSearcher;
 
 // ── Korean (Hangul) ──────────────────────────────────────────────────────────
 
@@ -341,10 +342,9 @@ fn erase_line_with_korean() {
 fn search_korean_text() {
     let mut t = TestTerminal::new(40, 5);
     t.push_str("Hello 세계 World 안녕");
-    let matches = t.screen.search_forward("세계", true);
+    let mut searcher = ScreenSearcher::new();
+    let matches = searcher.search_forward(&t.screen, "세계", true);
     assert_eq!(matches.len(), 1);
-    // In row_text, the text is "Hello 세계 World 안녕"
-    // "세" is at char position 6 (after H,e,l,l,o,space)
     assert_eq!(matches[0].col, 6);
     assert_eq!(matches[0].len, 2);
 }
@@ -353,7 +353,8 @@ fn search_korean_text() {
 fn search_multiple_korean_matches() {
     let mut t = TestTerminal::new(40, 5);
     t.push_str("안녕 세상 안녕 친구");
-    let matches = t.screen.search_forward("안녕", true);
+    let mut searcher = ScreenSearcher::new();
+    let matches = searcher.search_forward(&t.screen, "안녕", true);
     assert_eq!(matches.len(), 2);
 }
 
