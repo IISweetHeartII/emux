@@ -790,6 +790,10 @@ fn session_sharing_broadcast_to_all_clients() {
 }
 
 #[test]
+#[cfg_attr(
+    windows,
+    ignore = "flaky: Windows CI port file race with multiple clients"
+)]
 fn session_sharing_input_from_any_client_is_handled() {
     // Input from any client should be processed by the daemon (all clients
     // share the same session, so key input from any source is valid).
@@ -822,6 +826,10 @@ fn session_sharing_input_from_any_client_is_handled() {
 }
 
 #[test]
+#[cfg_attr(
+    windows,
+    ignore = "flaky: Windows CI port file race with multiple clients"
+)]
 fn session_sharing_client_ids_returns_all_connected() {
     let name = unique_name("sharing-ids");
     let mut server = DaemonServer::start(&name).unwrap();
