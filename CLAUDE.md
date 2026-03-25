@@ -56,6 +56,12 @@ Cargo workspace with crates under `crates/` and the main binary under `bins/emux
 | emux-ipc | done | Client-daemon IPC protocol (length-prefixed JSON codec) |
 | emux-render | done | Rendering / drawing layer (crossterm, damage tracking, status bar) |
 
+## CI / Windows Notes
+
+- **`deny.toml`**: cargo-deny 0.16+ changed the config schema — `"warn"`/`"allow"` are no longer valid for `[advisories]` fields. Valid values: `"deny"`, `"all"`, `"workspace"`, `"transitive"`, `"none"`. Always check `cargo deny --version` before editing.
+- **Windows daemon tests**: Several `emux-daemon` tests (snapshot, multi-client session sharing) are `#[cfg_attr(windows, ignore)]` due to flaky port file / temp path races on Windows CI. These are fully covered on Unix/macOS runners.
+- **Windows dead code**: Unix-only fields used behind `#[cfg(unix)]` need `#[cfg_attr(not(unix), allow(dead_code))]` to avoid `-D warnings` failures on Windows.
+
 ## Conventions
 
 - **TDD**: write tests first, then implement.

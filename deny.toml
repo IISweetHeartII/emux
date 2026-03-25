@@ -1,3 +1,5 @@
+# Valid values: "deny", "all", "workspace", "transitive", "none"
+# (cargo-deny 0.16+ removed "warn"/"allow" — check `cargo deny --version` before editing)
 [advisories]
 vulnerability = "deny"
 unmaintained = "workspace"
