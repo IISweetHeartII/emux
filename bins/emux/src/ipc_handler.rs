@@ -36,6 +36,7 @@ pub(crate) trait PaneAccess {
 pub(crate) struct IpcResult {
     pub response: ServerMessage,
     /// If true, the caller should sync PTY sizes after this message.
+    #[cfg_attr(not(unix), allow(dead_code))]
     pub sync_sizes: bool,
 }
 
